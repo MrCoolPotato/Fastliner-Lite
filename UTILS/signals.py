@@ -4,7 +4,7 @@ from PySide6.QtCore import QObject, Signal
 
 class SignalManager(QObject):
     """
-    A Singleton Signal Manager to handle cross-thread signals.
+    A Singleton Signal Manager to handle cross-service signals.
     """
     _instance = None
 

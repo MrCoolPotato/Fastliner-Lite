@@ -9,12 +9,11 @@ class CommandHandler(QObject):
     def __init__(self, main_window=None, parent=None):
         super().__init__(parent)
         self.signals = SignalManager()
+        
         self.settings_window = None
         
-        # Reference to the main window so we can close/minimize/fullscreen it
         self.main_window = main_window
         
-        # Example "logged_in" check (already in your code):
         self.logged_in = not False
 
     def handle_command(self, command: str, args: list):
@@ -37,7 +36,7 @@ class CommandHandler(QObject):
 
         elif cmd_lower == "/settings":
             if not self.logged_in:
-                self.signals.messageSignal.emit("You are not logged in.")
+                self.signals.messageSignal.emit("You are not logged in.", "warning")
             else:
                 self._handle_settings()
 
@@ -72,20 +71,20 @@ class CommandHandler(QObject):
         Closes the main application window, effectively exiting the app.
         """
         if self.main_window:
-            self.signals.messageSignal.emit("Exiting application...", "system")
+            self.signals.messageSignal.emit("Exiting application...", "success")
             self.main_window.close()
         else:
-            self.signals.messageSignal.emit("No main window reference. Cannot exit.", "system")
+            self.signals.messageSignal.emit("No main window reference. Cannot exit.", "error")
 
     def _handle_minimize(self):
         """
         Minimizes the main window.
         """
         if self.main_window:
-            self.signals.messageSignal.emit("Minimizing window...", "system")
+            self.signals.messageSignal.emit("Minimizing window...", "success")
             self.main_window.showMinimized()
         else:
-            self.signals.messageSignal.emit("No main window reference. Cannot minimize.", "system")
+            self.signals.messageSignal.emit("No main window reference. Cannot minimize.", "error")
 
     def _handle_fullscreen(self):
         """
@@ -94,13 +93,13 @@ class CommandHandler(QObject):
         if self.main_window:
             # If already fullscreen, return to normal; otherwise go fullscreen.
             if self.main_window.isFullScreen():
-                self.signals.messageSignal.emit("Restoring window from fullscreen...", "system")
+                self.signals.messageSignal.emit("Restoring window from fullscreen...", "success")
                 self.main_window.showNormal()
             else:
-                self.signals.messageSignal.emit("Entering fullscreen mode...", "system")
+                self.signals.messageSignal.emit("Entering fullscreen mode...", "success")
                 self.main_window.showFullScreen()
         else:
-            self.signals.messageSignal.emit("No main window reference. Cannot fullscreen.", "system")
+            self.signals.messageSignal.emit("No main window reference. Cannot fullscreen.", "error")
 
     def _handle_clear(self):
         """
@@ -119,4 +118,4 @@ class CommandHandler(QObject):
         if self.main_window and hasattr(self.main_window, "cli_widget"):
             self.main_window.cli_widget.clear()
         else:
-            self.signals.messageSignal.emit("No main window reference. Cannot clear local screen.", "system")        
+            self.signals.messageSignal.emit("No main window reference. Cannot clear local screen.", "error")        

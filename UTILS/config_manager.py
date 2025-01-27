@@ -5,11 +5,21 @@ import os
 DEFAULT_CONFIG = {
     "font": "Helvetica",
     "ui_scale": 1.0,
+    "font_scale": 14,
+    "input_placeholder": "~",
     "colors": {
-        "text_general": "#000000",
-        "text_system": "#0000FF",
-        "text_error": "#FF0000"
-    },
+        "text_general": "#282828", 
+        "text_system": "#458588",
+        "text_error": "#cc241d",   
+        "text_success": "#98971a",
+        "text_warning": "#d79921",
+        "cli_widget_border_color": "white",
+        "input_field_border_color": "white",
+        "central_widget_border_color": "none",
+        "cli_widget_color": "255, 255, 255, 1",
+        "input_field_color": "255, 255, 255, 1",
+        "central_widget_color": "255, 255, 255, 0.5"
+    }
 }
 
 CONFIG_PATH = os.path.join(

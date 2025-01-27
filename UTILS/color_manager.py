@@ -13,9 +13,11 @@ class ColorManager:
         """
         # 1) Get color config
         colors_config = ConfigManager.get("colors", {})
-        default_color = colors_config.get("text_general", "#000000") 
-        system_color = colors_config.get("text_system", "#0000FF")
-        error_color = colors_config.get("text_error", "#FF0000")   
+        default_color = colors_config.get("text_general", "#282828") 
+        system_color = colors_config.get("text_system", "#458588")
+        error_color = colors_config.get("text_error", "#cc241d")   
+        success_color = colors_config.get("text_success", "#98971a")
+        warning_color = colors_config.get("text_warning", "#d79921")
 
         # 2) Escape HTML special characters
         safe_text = cls.escape_html(raw_text)
@@ -30,6 +32,10 @@ class ColorManager:
             chosen_color = error_color 
         elif role == "user":
             chosen_color = default_color
+        elif role == "success":
+            chosen_color = success_color  
+        elif role == "warning":
+            chosen_color = warning_color      
         else:
             chosen_color = default_color
 
