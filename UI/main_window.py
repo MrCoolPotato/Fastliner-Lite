@@ -59,11 +59,11 @@ class MainWindow(QMainWindow):
             border-bottom-right-radius: {scaled_radius_sharp}px;
             padding: {int(5 * ui_scale)}px;
         """)
-        # Turn off scrollbars
+        
         self.cli_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.cli_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        # User input field
+        
         self.input_field = QTextEdit()
         self.input_field.setStyleSheet(f"""
             background-color: rgba({input_color});
@@ -90,17 +90,13 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.input_field)
         self.setCentralWidget(central_widget)
 
-        # Connect to our signal manager
+        
         self.signals = SignalManager()
         self.setup_connections()
 
-        # Track the last known cursor position for dragging
         self._drag_pos = QPoint()
 
     def setup_connections(self):
-        """
-        Connect signals from the singleton signal manager to local methods.
-        """
         self.signals.messageSignal.connect(self.append_text)
 
     def append_text(self, text: str, role: str = None):
@@ -109,16 +105,16 @@ class MainWindow(QMainWindow):
 
     def handle_user_input(self):
         user_text = self.input_field.toPlainText().strip()
+
         if user_text:
             if user_text.startswith("/"):
-                # Command mode: keep the slash in the first token
                 parts = user_text.split()
                 command = parts[0] if len(parts) > 0 else ""
                 args = parts[1:] if len(parts) > 1 else []
                 self.signals.commandSignal.emit(command, args)
             else:
-                # Message mode: just emit as a plain text message
                 self.signals.messageSignal.emit(user_text, "user")
+
         self.input_field.clear()
 
     def mousePressEvent(self, event):
@@ -144,4 +140,4 @@ class MainWindow(QMainWindow):
     def adjust_input_height(self):
         document_height = self.input_field.document().size().height()
         max_height = int(100 * self.ui_scale)
-        self.input_field.setMaximumHeight(min(max_height, document_height + 10))       
+        self.input_field.setMaximumHeight(min(max_height, document_height + 10))         

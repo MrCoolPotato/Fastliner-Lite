@@ -1,20 +1,29 @@
 # CORE/command_handler.py
 
 from PySide6.QtCore import QObject
+
 from UTILS.signals import SignalManager
+
 from UI.settings_window import SettingsWindow
+
+from CORE.matrix_client import MatrixClient
+
 import platform, os
 
+import asyncio
+
 class CommandHandler(QObject):
-    def __init__(self, main_window=None, parent=None):
+    def __init__(self, main_window=None, parent=None, matrix_client=None):
         super().__init__(parent)
         self.signals = SignalManager()
         
         self.settings_window = None
         
         self.main_window = main_window
+
+        self.matrix_client = matrix_client
         
-        self.logged_in = not False
+        self.logged_in = False
 
     def handle_command(self, command: str, args: list):
         """
@@ -31,7 +40,8 @@ class CommandHandler(QObject):
                 "  /minimize\n"
                 "  /fullscreen\n"
                 "  /clear\n"
-                "  ..."
+                "  -\n"
+                "  /login <username> <password>\n"
             ), "system")
 
         elif cmd_lower == "/settings":
@@ -52,8 +62,29 @@ class CommandHandler(QObject):
         elif cmd_lower == "/clear":
             self._handle_clear()   
 
+        elif cmd_lower == "/login":
+            if len(args) != 2:
+                self.signals.messageSignal.emit("Usage: /login <username> <password>", "warning")
+            else:
+                username, password = args
+                self.signals.messageSignal.emit(f"Logging in as {username}...", "system")
+                asyncio.create_task(self._handle_login(username, password))  
+
         else:
             self.signals.messageSignal.emit(f"Unknown command: {command}", "error")
+
+    async def _handle_login(self, username: str, password: str):
+        """
+        Handle the login command asynchronously.
+        """
+        success = await self.matrix_client.login(username, password)
+        if success:
+            self.logged_in = True
+            self.signals.messageSignal.emit("Login successful.", "success")
+            await self.matrix_client.start_sync()
+        else:
+            self.logged_in = False
+            self.signals.messageSignal.emit("Login failed. Check your credentials.", "error")        
 
     def _handle_settings(self):
         """
@@ -63,7 +94,6 @@ class CommandHandler(QObject):
             self.settings_window = SettingsWindow()
             self.settings_window.show()
         else:
-            # Bring it to the foreground if already open
             self.settings_window.activateWindow()
 
     def _handle_exit(self):
@@ -91,7 +121,6 @@ class CommandHandler(QObject):
         Toggles or sets the main window to fullscreen.
         """
         if self.main_window:
-            # If already fullscreen, return to normal; otherwise go fullscreen.
             if self.main_window.isFullScreen():
                 self.signals.messageSignal.emit("Restoring window from fullscreen...", "success")
                 self.main_window.showNormal()
@@ -106,15 +135,11 @@ class CommandHandler(QObject):
         Clears the console (OS-level) and the in-app text area.
         """
 
-        # 1) OS-level clear (helpful if the app is run in a real console)
         if platform.system().lower().startswith("win"):
-            # Windows
             os.system("cls")
         else:
-            # macOS, Linux, etc.
             os.system("clear")
 
-        # 2) Clear the Qt "CLI" text area, if we have a reference to the main window
         if self.main_window and hasattr(self.main_window, "cli_widget"):
             self.main_window.cli_widget.clear()
         else:

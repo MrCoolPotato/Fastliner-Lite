@@ -3,6 +3,7 @@ import json
 import os
 
 DEFAULT_CONFIG = {
+    "shell_mode": False,
     "font": "Helvetica",
     "ui_scale": 1.0,
     "font_scale": 14,
