@@ -5,7 +5,8 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QVBoxLayout,
     QWidget,
-    QTabWidget,
+    QHBoxLayout,
+    QSplitter,
 )
 from PySide6.QtCore import Qt, QPoint, QEvent
 
@@ -36,19 +37,41 @@ class MainWindow(QMainWindow):
         input_color = colors_config.get("input_field_color", "255, 255, 255, 1")
         app_color = colors_config.get("central_widget_color", "255, 255, 255, 0.5")
 
-        central_widget = QWidget()
-        central_widget.setObjectName("CentralWidget")
+        self.central_widget = QWidget()
+        self.central_widget.setObjectName("CentralWidget")
 
         scaled_radius = int(5 * ui_scale)
         scaled_radius_sharp = int(0 * ui_scale)
 
-        central_widget.setStyleSheet(f"""
+        self.central_widget.setStyleSheet(f"""
             QWidget#CentralWidget {{
                 background-color: rgba({app_color});
                 border-radius: {scaled_radius}px;
                 border: 1px solid {app_border_color};
             }}
         """)
+
+        # Sidebar
+        self.sidebar = QWidget()
+        self.sidebar.setFixedWidth(200)
+        self.sidebar.setVisible(False)
+        self.sidebar.setObjectName("Sidebar")
+
+        self.sidebar.setStyleSheet(f"""
+            QWidget#Sidebar {{
+                background-color: Blue;
+                border-right: 1px solid {display_border_color};
+                border-top-left-radius: {scaled_radius}px;
+                border-bottom-left-radius: {scaled_radius}px;
+            }}
+        """)
+
+        # I/O Container: Wraps CLI Widget + Input Field
+        self.io_container = QWidget()
+        self.io_container.setObjectName("IOContainer")
+
+        io_layout = QVBoxLayout(self.io_container)
+        io_layout.setSpacing(0)
 
         # CLI text area
         self.cli_widget = QTextEdit()
@@ -62,11 +85,10 @@ class MainWindow(QMainWindow):
             border-bottom-right-radius: {scaled_radius_sharp}px;
             padding: {int(5 * ui_scale)}px;
         """)
-        
         self.cli_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.cli_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        
+        # Input field
         self.input_field = QTextEdit()
         self.input_field.setStyleSheet(f"""
             background-color: rgba({input_color});
@@ -76,7 +98,6 @@ class MainWindow(QMainWindow):
             padding: {int(5 * ui_scale)}px;
             border-top-left-radius: {scaled_radius_sharp}px;
             border-top-right-radius: {scaled_radius_sharp}px;
-
         """)
         self.input_field.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.input_field.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -86,14 +107,22 @@ class MainWindow(QMainWindow):
         self.input_field.setPlaceholderText(placeholder_text)
         self.input_field.installEventFilter(self)
 
-        # Layout
-        layout = QVBoxLayout(central_widget)
-        layout.setSpacing(0)
-        layout.addWidget(self.cli_widget)
-        layout.addWidget(self.input_field)
-        self.setCentralWidget(central_widget)
+        io_layout.addWidget(self.cli_widget)
+        io_layout.addWidget(self.input_field)
 
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter.addWidget(self.sidebar)
+        self.splitter.addWidget(self.io_container)
+
+        self.splitter.setSizes([0, 1])
+
+        self.layout = QHBoxLayout(self.central_widget)
+        self.layout.setSpacing(0)
+        self.layout.addWidget(self.splitter)
         
+        self.central_widget.setLayout(self.layout)
+        self.setCentralWidget(self.central_widget)
+
         self.signals = SignalManager()
         self.setup_connections()
 
@@ -143,7 +172,18 @@ class MainWindow(QMainWindow):
     def adjust_input_height(self):
         document_height = self.input_field.document().size().height()
         max_height = int(100 * self.ui_scale)
-        self.input_field.setMaximumHeight(min(max_height, document_height + 10))  
+        self.input_field.setMaximumHeight(min(max_height, document_height + 10)) 
+
+    def toggle_sidebar(self):
+    
+        sizes = self.splitter.sizes()
+
+        if sizes[0] == 0:
+            self.splitter.setSizes([200, sizes[1]])
+            self.sidebar.setVisible(True)
+        else:
+            self.splitter.setSizes([0, sizes[1]])
+            self.sidebar.setVisible(False)  
 
     def closeEvent(self, event):
         self.signals.messageSignal.emit("Cleaning up resources...", "system")
@@ -153,4 +193,4 @@ class MainWindow(QMainWindow):
     async def cleanup(self):
         global matrix_client
         if matrix_client:
-            await matrix_client.stop()      
+            await matrix_client.stop()

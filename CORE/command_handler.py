@@ -61,6 +61,12 @@ class CommandHandler(QObject):
         elif cmd_lower == "/clear":
             self._handle_clear()   
 
+        elif cmd_lower == "/sidebar":
+            if self.main_window:
+                self.main_window.toggle_sidebar()
+            else:
+                self.signals.messageSignal.emit("No main window reference. Cannot toggle sidebar.", "error")    
+
         elif cmd_lower == "/login":
             if len(args) != 2:
                 self.signals.messageSignal.emit("Usage: /login <username> <password>", "warning")
