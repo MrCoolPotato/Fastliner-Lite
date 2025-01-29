@@ -18,6 +18,7 @@ class ColorManager:
         error_color = colors_config.get("text_error", "#cc241d")   
         success_color = colors_config.get("text_success", "#98971a")
         warning_color = colors_config.get("text_warning", "#d79921")
+        server_color = colors_config.get("text_server", "#d65d0e")
 
         # 2) Escape HTML special characters
         safe_text = cls.escape_html(raw_text)

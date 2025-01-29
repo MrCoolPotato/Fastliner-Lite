@@ -4,13 +4,16 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QTextEdit,
     QVBoxLayout,
-    QWidget
+    QWidget,
+    QTabWidget,
 )
 from PySide6.QtCore import Qt, QPoint, QEvent
 
 from UTILS.signals import SignalManager
 from UTILS.color_manager import ColorManager
 from UTILS.config_manager import ConfigManager
+
+import asyncio
 
 class MainWindow(QMainWindow):
     def __init__(self, ui_scale=1.0):
@@ -140,4 +143,14 @@ class MainWindow(QMainWindow):
     def adjust_input_height(self):
         document_height = self.input_field.document().size().height()
         max_height = int(100 * self.ui_scale)
-        self.input_field.setMaximumHeight(min(max_height, document_height + 10))         
+        self.input_field.setMaximumHeight(min(max_height, document_height + 10))  
+
+    def closeEvent(self, event):
+        self.signals.messageSignal.emit("Cleaning up resources...", "system")
+        event.accept()
+        asyncio.create_task(self.cleanup())
+
+    async def cleanup(self):
+        global matrix_client
+        if matrix_client:
+            await matrix_client.stop()      

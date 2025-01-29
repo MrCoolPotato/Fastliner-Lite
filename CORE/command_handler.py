@@ -26,9 +26,7 @@ class CommandHandler(QObject):
         self.logged_in = False
 
     def handle_command(self, command: str, args: list):
-        """
-        Dispatch commands to appropriate actions.
-        """
+        
         cmd_lower = command.lower()
 
         if cmd_lower == "/help":
@@ -42,6 +40,7 @@ class CommandHandler(QObject):
                 "  /clear\n"
                 "  -\n"
                 "  /login <username> <password>\n"
+                "  /logout\n"
             ), "system")
 
         elif cmd_lower == "/settings":
@@ -70,26 +69,33 @@ class CommandHandler(QObject):
                 self.signals.messageSignal.emit(f"Logging in as {username}...", "system")
                 asyncio.create_task(self._handle_login(username, password))  
 
+        elif cmd_lower == "/logout":
+            asyncio.create_task(self._handle_logout())        
+
         else:
             self.signals.messageSignal.emit(f"Unknown command: {command}", "error")
 
     async def _handle_login(self, username: str, password: str):
-        """
-        Handle the login command asynchronously.
-        """
+
         success = await self.matrix_client.login(username, password)
         if success:
             self.logged_in = True
             self.signals.messageSignal.emit("Login successful.", "success")
-            await self.matrix_client.start_sync()
         else:
             self.logged_in = False
-            self.signals.messageSignal.emit("Login failed. Check your credentials.", "error")        
+            self.signals.messageSignal.emit("Login failed. Check your credentials.", "error")
 
-    def _handle_settings(self):
-        """
-        Show the settings window as a popup dialog.
-        """
+    async def _handle_logout(self):
+
+        success = await self.matrix_client.logout()
+        if success:
+            self.logged_in = False
+            self.signals.messageSignal.emit("Logout successful.", "success")
+        else:
+            self.signals.messageSignal.emit("Logout failed.", "error")                
+
+    def _handle_settings(self):\
+    
         if self.settings_window is None or not self.settings_window.isVisible():
             self.settings_window = SettingsWindow()
             self.settings_window.show()
@@ -97,9 +103,7 @@ class CommandHandler(QObject):
             self.settings_window.activateWindow()
 
     def _handle_exit(self):
-        """
-        Closes the main application window, effectively exiting the app.
-        """
+
         if self.main_window:
             self.signals.messageSignal.emit("Exiting application...", "success")
             self.main_window.close()
@@ -107,9 +111,7 @@ class CommandHandler(QObject):
             self.signals.messageSignal.emit("No main window reference. Cannot exit.", "error")
 
     def _handle_minimize(self):
-        """
-        Minimizes the main window.
-        """
+        
         if self.main_window:
             self.signals.messageSignal.emit("Minimizing window...", "success")
             self.main_window.showMinimized()
@@ -117,9 +119,7 @@ class CommandHandler(QObject):
             self.signals.messageSignal.emit("No main window reference. Cannot minimize.", "error")
 
     def _handle_fullscreen(self):
-        """
-        Toggles or sets the main window to fullscreen.
-        """
+
         if self.main_window:
             if self.main_window.isFullScreen():
                 self.signals.messageSignal.emit("Restoring window from fullscreen...", "success")
@@ -131,9 +131,6 @@ class CommandHandler(QObject):
             self.signals.messageSignal.emit("No main window reference. Cannot fullscreen.", "error")
 
     def _handle_clear(self):
-        """
-        Clears the console (OS-level) and the in-app text area.
-        """
 
         if platform.system().lower().startswith("win"):
             os.system("cls")

@@ -14,12 +14,14 @@ DEFAULT_CONFIG = {
         "text_error": "#cc241d",   
         "text_success": "#98971a",
         "text_warning": "#d79921",
+        "text_server": "#d65d0e",
         "cli_widget_border_color": "white",
         "input_field_border_color": "white",
         "central_widget_border_color": "none",
         "cli_widget_color": "255, 255, 255, 1",
         "input_field_color": "255, 255, 255, 1",
         "central_widget_color": "255, 255, 255, 0.5"
+
     }
 }
 
