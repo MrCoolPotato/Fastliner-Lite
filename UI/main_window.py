@@ -80,7 +80,6 @@ class MainWindow(QMainWindow):
                 border-bottom-left-radius: {scaled_radius}px;
             }}
         """)
-        self.callwidget.setUrl("https://www.google.com")
 
         # I/O Container: Wraps CLI Widget + Input Field
         self.io_container = QWidget()
@@ -230,13 +229,14 @@ class MainWindow(QMainWindow):
         sizes = self.splitter.sizes()
 
         if sizes[2] == 0:
-            self.splitter.setSizes([sizes[0], sizes[1], 200])
+            self.splitter.setSizes([sizes[0], sizes[1], 500])
             self.cli_widget.setStyleSheet(self.cli_widget.styleSheet() + f"""
                 border-top-right-radius: {scaled_radius_sharp}px;
             """)
             self.input_field.setStyleSheet(self.input_field.styleSheet() + f"""
                 border-bottom-right-radius: {scaled_radius_sharp}px;
             """)
+            self.callwidget.setUrl("https://www.google.com")
             self.callwidget.setVisible(True)
         else:
             self.splitter.setSizes([sizes[0], sizes[1], 0])
@@ -246,7 +246,9 @@ class MainWindow(QMainWindow):
             self.input_field.setStyleSheet(self.input_field.styleSheet().replace(
                 f"border-bottom-right-radius: {scaled_radius_sharp}px;", ""
             ))
-            self.callwidget.setVisible(False)          
+            self.callwidget.setVisible(False)  
+            self.callwidget.setUrl("about:blank")
+            self.callwidget.page().profile().clearHttpCache()      
 
     def closeEvent(self, event):
         self.signals.messageSignal.emit("Cleaning up resources...", "system")
