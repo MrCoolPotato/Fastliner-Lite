@@ -20,8 +20,10 @@ DEFAULT_CONFIG = {
         "central_widget_border_color": "none",
         "cli_widget_color": "255, 255, 255, 1",
         "input_field_color": "255, 255, 255, 1",
-        "central_widget_color": "255, 255, 255, 0.5"
-
+        "central_widget_color": "255, 255, 255, 0.5",
+        "sidebar_splitter_color": "#282828",
+        "sidebar_color": "255, 255, 255, 1",
+        "sidebar_border_color": "white"
     }
 }
 

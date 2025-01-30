@@ -65,7 +65,13 @@ class CommandHandler(QObject):
             if self.main_window:
                 self.main_window.toggle_sidebar()
             else:
-                self.signals.messageSignal.emit("No main window reference. Cannot toggle sidebar.", "error")    
+                self.signals.messageSignal.emit("No main window reference. Cannot toggle sidebar.", "error")
+
+        elif cmd_lower == "/call":
+            if self.main_window:
+                self.main_window.toggle_callwidget()
+            else:
+                self.signals.messageSignal.emit("No main window reference. Cannot toggle call.", "error")             
 
         elif cmd_lower == "/login":
             if len(args) != 2:

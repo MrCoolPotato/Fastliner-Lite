@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QSplitter,
 )
 from PySide6.QtCore import Qt, QPoint, QEvent
+from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from UTILS.signals import SignalManager
 from UTILS.color_manager import ColorManager
@@ -29,6 +30,9 @@ class MainWindow(QMainWindow):
 
         placeholder_text = ConfigManager.get("input_placeholder", "~")
         colors_config = ConfigManager.get("colors", {})
+        sidebar_splitter_color = colors_config.get("sidebar_splitter_color", "#282828")
+        sidebar_color = colors_config.get("sidebar_color", "255, 255, 255, 1")
+        sidebar_border_color = colors_config.get("sidebar_border_color", "white")
         default_color = colors_config.get("text_general", "#282828") 
         display_border_color = colors_config.get("cli_widget_border_color", "white")
         input_border_color = colors_config.get("input_field_border_color", "white")
@@ -53,18 +57,30 @@ class MainWindow(QMainWindow):
 
         # Sidebar
         self.sidebar = QWidget()
-        self.sidebar.setFixedWidth(200)
         self.sidebar.setVisible(False)
         self.sidebar.setObjectName("Sidebar")
-
         self.sidebar.setStyleSheet(f"""
             QWidget#Sidebar {{
-                background-color: Blue;
-                border-right: 1px solid {display_border_color};
+                background-color: rgba({sidebar_color});
+                border-right: 1px solid {sidebar_border_color};
                 border-top-left-radius: {scaled_radius}px;
                 border-bottom-left-radius: {scaled_radius}px;
             }}
         """)
+
+        # CallWidget
+        self.callwidget = QWebEngineView()
+        self.callwidget.setVisible(False)
+        self.callwidget.setObjectName("CallWidget")
+        self.callwidget.setStyleSheet(f"""
+            QWidget#CallWidget {{
+                background-color: rgba({sidebar_color});
+                border-right: 1px solid {sidebar_border_color};
+                border-top-left-radius: {scaled_radius}px;
+                border-bottom-left-radius: {scaled_radius}px;
+            }}
+        """)
+        self.callwidget.setUrl("https://www.google.com")
 
         # I/O Container: Wraps CLI Widget + Input Field
         self.io_container = QWidget()
@@ -72,6 +88,7 @@ class MainWindow(QMainWindow):
 
         io_layout = QVBoxLayout(self.io_container)
         io_layout.setSpacing(0)
+        io_layout.setContentsMargins(0, 0, 0, 0)
 
         # CLI text area
         self.cli_widget = QTextEdit()
@@ -113,8 +130,15 @@ class MainWindow(QMainWindow):
         self.splitter = QSplitter(Qt.Horizontal)
         self.splitter.addWidget(self.sidebar)
         self.splitter.addWidget(self.io_container)
-
+        self.splitter.addWidget(self.callwidget)
         self.splitter.setSizes([0, 1])
+        self.splitter.setStyleSheet(f"""
+            QSplitter::handle {{
+                background: transparent;
+                border: 1px solid {sidebar_splitter_color};
+            }}
+        """)
+        self.splitter.setHandleWidth(0)
 
         self.layout = QHBoxLayout(self.central_widget)
         self.layout.setSpacing(0)
@@ -176,14 +200,53 @@ class MainWindow(QMainWindow):
 
     def toggle_sidebar(self):
     
+        scaled_radius_sharp = int(0 * self.ui_scale)
+
         sizes = self.splitter.sizes()
 
         if sizes[0] == 0:
             self.splitter.setSizes([200, sizes[1]])
+            self.cli_widget.setStyleSheet(self.cli_widget.styleSheet() + f"""
+                border-top-left-radius: {scaled_radius_sharp}px;
+            """)
+            self.input_field.setStyleSheet(self.input_field.styleSheet() + f"""
+                border-bottom-left-radius: {scaled_radius_sharp}px;
+            """)
             self.sidebar.setVisible(True)
         else:
             self.splitter.setSizes([0, sizes[1]])
-            self.sidebar.setVisible(False)  
+            self.cli_widget.setStyleSheet(self.cli_widget.styleSheet().replace(
+                f"border-top-left-radius: {scaled_radius_sharp}px;", ""
+            ))
+            self.input_field.setStyleSheet(self.input_field.styleSheet().replace(
+                f"border-bottom-left-radius: {scaled_radius_sharp}px;", ""
+            ))
+            self.sidebar.setVisible(False)      
+
+    def toggle_callwidget(self):
+    
+        scaled_radius_sharp = int(0 * self.ui_scale)
+
+        sizes = self.splitter.sizes()
+
+        if sizes[2] == 0:
+            self.splitter.setSizes([sizes[0], sizes[1], 200])
+            self.cli_widget.setStyleSheet(self.cli_widget.styleSheet() + f"""
+                border-top-right-radius: {scaled_radius_sharp}px;
+            """)
+            self.input_field.setStyleSheet(self.input_field.styleSheet() + f"""
+                border-bottom-right-radius: {scaled_radius_sharp}px;
+            """)
+            self.callwidget.setVisible(True)
+        else:
+            self.splitter.setSizes([sizes[0], sizes[1], 0])
+            self.cli_widget.setStyleSheet(self.cli_widget.styleSheet().replace(
+                f"border-top-right-radius: {scaled_radius_sharp}px;", ""
+            ))
+            self.input_field.setStyleSheet(self.input_field.styleSheet().replace(
+                f"border-bottom-right-radius: {scaled_radius_sharp}px;", ""
+            ))
+            self.callwidget.setVisible(False)          
 
     def closeEvent(self, event):
         self.signals.messageSignal.emit("Cleaning up resources...", "system")
