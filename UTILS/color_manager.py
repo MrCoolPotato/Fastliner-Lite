@@ -36,7 +36,9 @@ class ColorManager:
         elif role == "success":
             chosen_color = success_color  
         elif role == "warning":
-            chosen_color = warning_color      
+            chosen_color = warning_color   
+        elif role == "server":
+            chosen_color = server_color     
         else:
             chosen_color = default_color
 

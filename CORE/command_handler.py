@@ -76,6 +76,8 @@ class CommandHandler(QObject):
         elif cmd_lower == "/login":
             if len(args) != 2:
                 self.signals.messageSignal.emit("Usage: /login <username> <password>", "warning")
+            elif self.logged_in:
+                self.signals.messageSignal.emit("You are already logged in.", "warning")
             else:
                 username, password = args
                 self.signals.messageSignal.emit(f"Logging in as {username}...", "system")
@@ -94,7 +96,6 @@ class CommandHandler(QObject):
             self.logged_in = True
             self.signals.messageSignal.emit("Login successful.", "success")
         else:
-            self.logged_in = False
             self.signals.messageSignal.emit("Login failed. Check your credentials.", "error")
 
     async def _handle_logout(self):

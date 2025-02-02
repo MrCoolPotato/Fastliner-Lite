@@ -25,12 +25,10 @@ if __name__ == "__main__":
         font_scale = ConfigManager.get("font_scale", 14)
         base_font_size = int(font_scale * ui_scale)
         app.setFont(QFont(font_name, base_font_size))
-
-        window = MainWindow()
-        window.show()
-
         signals = SignalManager()
-        matrix_client = MatrixClient(signals, window)
+        matrix_client = MatrixClient(signals)
+        window = MainWindow(matrix_client=matrix_client)
+        window.show()
         cmd_handler = CommandHandler(main_window=window, matrix_client=matrix_client)
         signals.commandSignal.connect(cmd_handler.handle_command)
         signals.messageSignal.emit("Fastliner is ready.", "system")

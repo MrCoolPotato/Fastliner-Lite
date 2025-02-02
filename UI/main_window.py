@@ -7,6 +7,8 @@ from PySide6.QtWidgets import (
     QWidget,
     QHBoxLayout,
     QSplitter,
+    QTreeWidget,
+    QTreeWidgetItem,
 )
 from PySide6.QtCore import Qt, QPoint, QEvent
 from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -18,9 +20,13 @@ from UTILS.config_manager import ConfigManager
 import asyncio
 
 class MainWindow(QMainWindow):
-    def __init__(self, ui_scale=1.0):
+    def __init__(self, matrix_client, ui_scale=1.0):
         super().__init__()
-        self.setWindowTitle("Fastliner")
+        self.setWindowTitle("Fastliner") 
+
+        self.current_room_id = None
+
+        self.matrix_client = matrix_client
 
         self.ui_scale = ui_scale
 
@@ -33,6 +39,17 @@ class MainWindow(QMainWindow):
         sidebar_splitter_color = colors_config.get("sidebar_splitter_color", "#282828")
         sidebar_color = colors_config.get("sidebar_color", "255, 255, 255, 1")
         sidebar_border_color = colors_config.get("sidebar_border_color", "white")
+
+        tree_background_color = colors_config.get("tree_background_color", "255, 255, 255, 1")
+        tree_color = colors_config.get("tree_color", "#282828")
+        tree_item_color = colors_config.get("tree_item_color", "#282828")
+        tree_item_selected_color = colors_config.get("tree_item_selected_color", "255, 255, 255, 0.5")
+        tree_category_icon_color_closed = colors_config.get("tree_category_icon_color_closed", "255, 255, 255, 0.5")
+        tree_category_icon_color_open = colors_config.get("tree_category_icon_color_open", "255, 255, 255, 0.5")
+        tree_item_hover_color = colors_config.get("tree_item_hover_color", "255, 255, 255, 0.5")
+        tree_item_indentation_color = colors_config.get("tree_item_indentation_color", "255, 255, 255, 1.0")
+        tree_category_indentation_color = colors_config.get("tree_category_indentation_color", "255, 255, 255, 1.0")
+
         default_color = colors_config.get("text_general", "#282828") 
         display_border_color = colors_config.get("cli_widget_border_color", "white")
         input_border_color = colors_config.get("input_field_border_color", "white")
@@ -67,6 +84,50 @@ class MainWindow(QMainWindow):
                 border-bottom-left-radius: {scaled_radius}px;
             }}
         """)
+
+        self.tree = QTreeWidget(self.sidebar)
+        self.tree.setHeaderHidden(True)
+        self.tree.setIndentation(15)
+        self.tree.setStyleSheet(f"""
+            QTreeWidget {{
+                background-color: rgba({tree_background_color});
+                color: {tree_color};
+                border: none;
+                padding: 5px;
+            }}
+            QTreeWidget::item {{
+                color: {tree_item_color};
+                padding: 5px;
+            }}
+            QTreeWidget::item:selected {{
+                background-color: rgba({tree_item_selected_color});
+                border-radius: 5px;
+            }}
+            QTreeView::branch:closed:has-children {{
+                background-color: rgba({tree_category_icon_color_closed});
+                image: url("assets/fl_small_logo.png");
+            }}
+            QTreeView::branch:open:has-children {{
+                background-color: rgba({tree_category_icon_color_open});
+                image: url(assets/fl_small_logo.png);
+            }}
+            QTreeWidget::item:hover {{
+                background-color: rgba({tree_item_hover_color});
+            }}
+            QTreeView::branch:selected {{
+                background-color: rgba({tree_item_indentation_color});
+            }}
+            QTreeView::branch:has-children:selected {{
+                background-color: rgba({tree_category_indentation_color});
+            }}
+        """)
+        self.tree.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.tree.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        sidebar_layout = QVBoxLayout(self.sidebar)
+        sidebar_layout.addWidget(self.tree)
+        sidebar_layout.setContentsMargins(0, 0, 0, 0)
+        self.sidebar.setLayout(sidebar_layout)
 
         # CallWidget
         self.callwidget = QWebEngineView()
@@ -153,6 +214,8 @@ class MainWindow(QMainWindow):
 
     def setup_connections(self):
         self.signals.messageSignal.connect(self.append_text)
+        self.signals.roomSignal.connect(self.populate_sidebar)
+        self.tree.itemClicked.connect(self.on_item_clicked)
 
     def append_text(self, text: str, role: str = None):
         colorized_html = ColorManager.colorize(text, role=role)
@@ -248,7 +311,62 @@ class MainWindow(QMainWindow):
             ))
             self.callwidget.setVisible(False)  
             self.callwidget.setUrl("about:blank")
-            self.callwidget.page().profile().clearHttpCache()      
+            self.callwidget.page().profile().clearHttpCache()     
+
+    def populate_sidebar(self, room_details):
+        # Clear any existing items
+        self.tree.clear()
+
+        # Separate spaces and standalone rooms
+        spaces = {}
+        standalone_rooms = []
+
+        for room in room_details:
+            if room.get("is_space"):
+                spaces[room["room_id"]] = room
+            else:
+                standalone_rooms.append(room)
+
+        # Process spaces and add their children if present
+        for space_id, space in spaces.items():
+            # Use the room's name if available, else fallback to its id.
+            display_name = space.get("name", space_id)
+            space_item = QTreeWidgetItem(self.tree, [f"─ {display_name}"])
+            # Save the room id in the item data.
+            space_item.setData(0, Qt.UserRole, space_id)
+
+            # Get children if any; each child is expected to be a dictionary with keys 'room_id' and 'name'
+            children = space.get("children", [])
+            for child in children:
+                child_display_name = child.get("name", child.get("room_id", "Unknown"))
+                child_item = QTreeWidgetItem(space_item, [f"└ {child_display_name}"])
+                # Save the child room id in the item data.
+                child_item.setData(0, Qt.UserRole, child.get("room_id"))
+            space_item.setExpanded(True)
+
+        # Process standalone rooms
+        for room in standalone_rooms:
+            display_name = room.get("name", room.get("room_id"))
+            room_item = QTreeWidgetItem(self.tree, [display_name])
+            room_item.setData(0, Qt.UserRole, room.get("room_id"))
+
+        # Refresh the UI
+        self.tree.repaint()
+
+    def on_item_clicked(self, item, column):
+        # Retrieve the stored room ID from the clicked item
+        room_id = item.data(0, Qt.UserRole)
+        if room_id:
+            # If this room is already open, do not fetch the context again.
+            if self.current_room_id == room_id:
+                self.signals.messageSignal.emit(f"Room {room_id} is already open.", "system")
+                return
+            # Update the current room and fetch its context
+            self.current_room_id = room_id
+            self.signals.messageSignal.emit(f"Fetching context for room: {room_id}", "system")
+            asyncio.create_task(self.matrix_client.fetch_room_messages(room_id))
+        else:
+            self.signals.messageSignal.emit("No room id found for the selected item.", "error")       
 
     def closeEvent(self, event):
         self.signals.messageSignal.emit("Cleaning up resources...", "system")

@@ -23,7 +23,16 @@ DEFAULT_CONFIG = {
         "central_widget_color": "255, 255, 255, 0.5",
         "sidebar_splitter_color": "#282828",
         "sidebar_color": "255, 255, 255, 1",
-        "sidebar_border_color": "white"
+        "sidebar_border_color": "white",
+        "tree_background_color": "255, 255, 255, 1",
+        "tree_color": "#282828",
+        "tree_item_color": "#282828",
+        "tree_item_selected_color": "255, 255, 255, 0.5",
+        "tree_category_icon_color_closed": "255, 255, 255, 0.5",
+        "tree_category_icon_color_open": "255, 255, 255, 0.5",
+        "tree_item_hover_color": "255, 255, 255, 0.5",
+        "tree_item_indentation_color": "255, 255, 255, 1.0",
+        "tree_category_indentation_color": "255, 255, 255, 1.0"
     }
 }
 
