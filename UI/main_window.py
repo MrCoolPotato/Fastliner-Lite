@@ -10,7 +10,9 @@ from PySide6.QtWidgets import (
     QTreeWidget,
     QTreeWidgetItem,
 )
+
 from PySide6.QtCore import Qt, QPoint, QEvent
+from PySide6.QtGui import QTextCursor
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from UTILS.signals import SignalManager
@@ -218,6 +220,11 @@ class MainWindow(QMainWindow):
         self.signals.logoutSignal.connect(self.logout_clear_and_reset_action)
 
     def append_text(self, text: str, role: str = None):
+
+        cursor = self.cli_widget.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        self.cli_widget.setTextCursor(cursor)
+
         colorized_html = ColorManager.colorize(text, role=role)
         self.cli_widget.insertHtml(colorized_html + "<br>")
 
