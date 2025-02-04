@@ -324,7 +324,72 @@ class MatrixClient:
                     f"Failed to send message: {getattr(response, 'message', 'Unknown error')}", "error"
                 )
         except Exception as e:
-            self.signals.messageSignal.emit(f"Error sending message: {str(e)}", "error")            
+            self.signals.messageSignal.emit(f"Error sending message: {str(e)}", "error")     
+
+    async def whoami(self):
+      
+        if not self.client or not self.client.access_token:
+            self.signals.messageSignal.emit("Cannot determine who you are: Not logged in.", "warning")
+            return
+
+        try:
+            profile_response = await self.client.get_profile(self.client.user_id)
+            
+            if hasattr(profile_response, "displayname") and profile_response.displayname:
+                whoami_info = f"User ID: {self.client.user_id}, Display name: {profile_response.displayname}"
+            else:
+                whoami_info = f"User ID: {self.client.user_id} (no display name set)"
+            
+            self.signals.messageSignal.emit(whoami_info, "system")
+            return whoami_info
+
+        except Exception as e:
+            self.signals.messageSignal.emit(f"Whoami error: {str(e)}", "error")
+            return None             
+
+    async def list_my_events(self, limit: int = 10000):
+        
+        room_id = OpenRoomManager.get_current_room()
+
+        if not self.client or not self.client.access_token:
+            self.signals.messageSignal.emit("Cannot list events: Not logged in.", "warning")
+            return
+
+        if not self.client.user_id:
+            self.signals.messageSignal.emit("User ID not set; cannot list events.", "warning")
+            return
+
+        try:
+            
+            response = await self.client.room_messages(
+                room_id,
+                start="",
+                limit=limit,
+                direction="b"
+            )
+
+            if isinstance(response, nio.RoomMessagesResponse):
+                my_events = []
+                for event in response.chunk:
+                    
+                    if isinstance(event, nio.RoomMessageText) and event.sender == self.client.user_id:
+                        ts = event.server_timestamp
+                        time_str = datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M:%S") if ts else "unknown"
+                        
+                        formatted = f"Event ID: {event.event_id} | {event.sender} [{time_str}] : {event.body}"
+                        my_events.append(formatted)
+
+                if my_events:
+                    
+                    my_events.reverse()
+                    for event_str in my_events:
+                        self.signals.messageSignal.emit(event_str, "system")
+                else:
+                    self.signals.messageSignal.emit("No events found for current user in this room.", "system")
+            else:
+                self.signals.messageSignal.emit(f"Error: {response.message}", "error")
+        except Exception as e:
+            self.signals.messageSignal.emit(f"Error listing my events: {str(e)}", "error")          
 
     async def stop(self):
         

@@ -38,9 +38,13 @@ class CommandHandler(QObject):
                 "  /minimize\n"
                 "  /fullscreen\n"
                 "  /clear\n"
+                "  /sidebar\n"
+                "  /call\n"
                 "  -\n"
                 "  /login <username> <password>\n"
                 "  /logout\n"
+                "  -\n"
+                "  /whoami\n"
             ), "system")
 
         elif cmd_lower == "/settings":
@@ -60,6 +64,12 @@ class CommandHandler(QObject):
 
         elif cmd_lower == "/clear":
             self._handle_clear()   
+
+        elif cmd_lower == "/whoami":
+            asyncio.create_task(self._handle_whoami())
+
+        elif cmd_lower == "/myevents":
+            asyncio.create_task(self._handle_myevents())    
 
         elif cmd_lower == "/sidebar":
             if self.main_window:
@@ -89,6 +99,14 @@ class CommandHandler(QObject):
         else:
             self.signals.messageSignal.emit(f"Unknown command: {command}", "error")
 
+    async def _handle_whoami(self):
+
+        await self.matrix_client.whoami() 
+
+    async def _handle_myevents(self):
+        
+        await self.matrix_client.list_my_events()           
+
     async def _handle_login(self, username: str, password: str):
 
         success = await self.matrix_client.login(username, password)
@@ -107,7 +125,7 @@ class CommandHandler(QObject):
         else:
             self.signals.messageSignal.emit("Logout failed.", "error")                
 
-    def _handle_settings(self):\
+    def _handle_settings(self):
     
         if self.settings_window is None or not self.settings_window.isVisible():
             self.settings_window = SettingsWindow()
