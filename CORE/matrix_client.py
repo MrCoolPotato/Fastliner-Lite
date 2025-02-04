@@ -132,8 +132,6 @@ class MatrixClient:
     async def process_sync_response(self, response: SyncResponse):
        
         open_room_id = OpenRoomManager.get_current_room()
-      
-        
         
         if response.rooms and hasattr(response.rooms, "join"):
             for room_id, joined_room in response.rooms.join.items():
@@ -145,7 +143,7 @@ class MatrixClient:
                 timeline = joined_room.timeline
                 if timeline and timeline.events:
                     for event in timeline.events:
-                        # Process standard text messages.
+                        
                         if isinstance(event, nio.RoomMessageText):
                             sender = event.sender
                             ts = event.server_timestamp
@@ -157,29 +155,25 @@ class MatrixClient:
                             formatted_message = f"{sender} [{time_str}] : {message}"
                             self.signals.messageSignal.emit(formatted_message, "user")
                         else:
-                            # Process the event as an audit log entry.
+                            
                             sender = getattr(event, "sender", "server")
                             ts = getattr(event, "server_timestamp", None)
-                            time_str = (
-                                datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M:%S")
-                                if ts else "unknown"
-                            )
-                            # Try getting event_type; if not present, use the class name.
-                            event_type = getattr(event, "event_type", None)
-                            if not event_type:
-                                event_type = event.__class__.__name__
+                            time_str = (datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M:%S")
+                                        if ts else "unknown")
                             
-                            # If the event type is UnknownEvent, pull extra details from the event content.
-                            if event_type == "UnknownEvent":
-                                content = getattr(event, "content", {})
-                                # Create a short summary from content (if available)
-                                extra_info = ""
-                                if isinstance(content, dict) and content:
-                                    extra_info = ": " + ", ".join(f"{k}={v}" for k, v in content.items())
-                                formatted_audit = f"{sender} [{time_str}] {event_type}{extra_info}"
+                            content = getattr(event, "content", {})
+
+                            if not content and hasattr(event, "source"):
+                                content = event.source.get("content", {})
+
+                            if isinstance(content, dict) and content:
+                                content_str = ", ".join(f"{k}={v}" for k, v in content.items())
                             else:
-                                formatted_audit = f"{sender} [{time_str}] {event_type}"
+                                content_str = str(content) if content else "(no content)"
+                            
+                            formatted_audit = f"{sender} [{time_str}] : {content_str}"
                             self.signals.messageSignal.emit(formatted_audit, "server")
+                         
 
     async def stop_syncing(self):
 
@@ -282,6 +276,25 @@ class MatrixClient:
                         formatted_message = f"{sender} [{time_str}] : {message}"
 
                         self.signals.messageSignal.emit(formatted_message, "user")
+                    else:
+                        
+                        sender = getattr(event, "sender", "server")
+                        ts = getattr(event, "server_timestamp", None)
+                        time_str = (datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M:%S")
+                                    if ts else "unknown")
+                        
+                        content = getattr(event, "content", {})
+    
+                        if not content and hasattr(event, "source"):
+                            content = event.source.get("content", {})
+
+                        if isinstance(content, dict) and content:
+                            content_str = ", ".join(f"{k}={v}" for k, v in content.items())
+                        else:
+                            content_str = str(content) if content else "(no content)"
+                        
+                        formatted_audit = f"{sender} [{time_str}] : {content_str}"
+                        self.signals.messageSignal.emit(formatted_audit, "server")    
             else:
                 self.signals.messageSignal.emit(f"Error: {response.message}", "error")
         except Exception as e:
