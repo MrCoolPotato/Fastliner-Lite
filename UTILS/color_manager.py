@@ -19,6 +19,7 @@ class ColorManager:
         success_color = colors_config.get("text_success", "#98971a")
         warning_color = colors_config.get("text_warning", "#d79921")
         server_color = colors_config.get("text_server", "#d65d0e")
+        debug_color = colors_config.get("text_debug", "#b16286")
 
         # 2) Escape HTML special characters
         safe_text = cls.escape_html(raw_text)
@@ -38,7 +39,9 @@ class ColorManager:
         elif role == "warning":
             chosen_color = warning_color   
         elif role == "server":
-            chosen_color = server_color     
+            chosen_color = server_color
+        elif role == "debug":
+            chosen_color = debug_color     
         else:
             chosen_color = default_color
 

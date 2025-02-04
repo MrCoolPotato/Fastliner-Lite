@@ -15,6 +15,7 @@ DEFAULT_CONFIG = {
         "text_success": "#98971a",
         "text_warning": "#d79921",
         "text_server": "#d65d0e",
+        "text_debug": "#b16286",
         "cli_widget_border_color": "white",
         "input_field_border_color": "white",
         "central_widget_border_color": "none",

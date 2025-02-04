@@ -16,6 +16,7 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from UTILS.signals import SignalManager
 from UTILS.color_manager import ColorManager
 from UTILS.config_manager import ConfigManager
+from UTILS.open_room_manager import OpenRoomManager
 
 import asyncio
 
@@ -23,8 +24,6 @@ class MainWindow(QMainWindow):
     def __init__(self, matrix_client, ui_scale=1.0):
         super().__init__()
         self.setWindowTitle("Fastliner") 
-
-        self.current_room_id = None
 
         self.matrix_client = matrix_client
 
@@ -216,12 +215,16 @@ class MainWindow(QMainWindow):
         self.signals.messageSignal.connect(self.append_text)
         self.signals.roomSignal.connect(self.populate_sidebar)
         self.tree.itemClicked.connect(self.on_item_clicked)
+        self.signals.logoutSignal.connect(self.logout_clear_and_reset_action)
 
     def append_text(self, text: str, role: str = None):
         colorized_html = ColorManager.colorize(text, role=role)
         self.cli_widget.insertHtml(colorized_html + "<br>")
 
     def handle_user_input(self):
+
+        current_room_id = OpenRoomManager.get_current_room()
+
         user_text = self.input_field.toPlainText().strip()
 
         if user_text:
@@ -231,7 +234,8 @@ class MainWindow(QMainWindow):
                 args = parts[1:] if len(parts) > 1 else []
                 self.signals.commandSignal.emit(command, args)
             else:
-                self.signals.messageSignal.emit(user_text, "user")
+                #self.signals.messageSignal.emit(user_text, "user")
+                asyncio.create_task(self.matrix_client.send_message(current_room_id, user_text))
 
         self.input_field.clear()
 
@@ -357,16 +361,25 @@ class MainWindow(QMainWindow):
         # Retrieve the stored room ID from the clicked item
         room_id = item.data(0, Qt.UserRole)
         if room_id:
-            # If this room is already open, do not fetch the context again.
-            if self.current_room_id == room_id:
-                self.signals.messageSignal.emit(f"Room {room_id} is already open.", "system")
+            # Check if this room is already open
+            if OpenRoomManager.get_current_room() == room_id:
+                self.signals.messageSignal.emit(f"Room {room_id} is already open.", "warning")
                 return
-            # Update the current room and fetch its context
-            self.current_room_id = room_id
+
+            # Update the current room globally
+            OpenRoomManager.set_current_room(room_id)
+
+            # Clear the CLI area and fetch the room messages
+            self.cli_widget.clear()
             self.signals.messageSignal.emit(f"Fetching context for room: {room_id}", "system")
             asyncio.create_task(self.matrix_client.fetch_room_messages(room_id))
         else:
-            self.signals.messageSignal.emit("No room id found for the selected item.", "error")       
+            self.signals.messageSignal.emit("No room id found for the selected item.", "error")
+
+    def logout_clear_and_reset_action(self):
+        OpenRoomManager.reset_current_room()
+        self.cli_widget.clear()
+        self.input_field.clear()             
 
     def closeEvent(self, event):
         self.signals.messageSignal.emit("Cleaning up resources...", "system")

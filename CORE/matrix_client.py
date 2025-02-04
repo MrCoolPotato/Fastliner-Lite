@@ -5,8 +5,11 @@ from nio import (
     SyncResponse,
     SyncError,
 )
+import nio
 
 from CONFIG.env import HOMESERVER
+
+from UTILS.open_room_manager import OpenRoomManager
 
 import asyncio
 import aiohttp
@@ -22,6 +25,7 @@ class MatrixClient:
         #sync control
         self.running = False
         self.next_batch = None
+
 
     async def login(self, username, password):
       
@@ -63,6 +67,7 @@ class MatrixClient:
                 self.signals.messageSignal.emit("Logged out successfully.", "success")
                 await self.stop()
                 self.signals.roomSignal.emit([])
+                self.signals.logoutSignal.emit()
                 return True
             else:
                 self.signals.messageSignal.emit(
@@ -125,8 +130,56 @@ class MatrixClient:
 
 
     async def process_sync_response(self, response: SyncResponse):
+       
+        open_room_id = OpenRoomManager.get_current_room()
+      
         
-        pass
+        
+        if response.rooms and hasattr(response.rooms, "join"):
+            for room_id, joined_room in response.rooms.join.items():
+                
+               
+                if room_id != open_room_id:
+                    continue
+
+                timeline = joined_room.timeline
+                if timeline and timeline.events:
+                    for event in timeline.events:
+                        # Process standard text messages.
+                        if isinstance(event, nio.RoomMessageText):
+                            sender = event.sender
+                            ts = event.server_timestamp
+                            message = event.body
+                            time_str = (
+                                datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M:%S")
+                                if ts else "unknown"
+                            )
+                            formatted_message = f"{sender} [{time_str}] : {message}"
+                            self.signals.messageSignal.emit(formatted_message, "user")
+                        else:
+                            # Process the event as an audit log entry.
+                            sender = getattr(event, "sender", "server")
+                            ts = getattr(event, "server_timestamp", None)
+                            time_str = (
+                                datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M:%S")
+                                if ts else "unknown"
+                            )
+                            # Try getting event_type; if not present, use the class name.
+                            event_type = getattr(event, "event_type", None)
+                            if not event_type:
+                                event_type = event.__class__.__name__
+                            
+                            # If the event type is UnknownEvent, pull extra details from the event content.
+                            if event_type == "UnknownEvent":
+                                content = getattr(event, "content", {})
+                                # Create a short summary from content (if available)
+                                extra_info = ""
+                                if isinstance(content, dict) and content:
+                                    extra_info = ": " + ", ".join(f"{k}={v}" for k, v in content.items())
+                                formatted_audit = f"{sender} [{time_str}] {event_type}{extra_info}"
+                            else:
+                                formatted_audit = f"{sender} [{time_str}] {event_type}"
+                            self.signals.messageSignal.emit(formatted_audit, "server")
 
     async def stop_syncing(self):
 
@@ -145,11 +198,11 @@ class MatrixClient:
                 joined_rooms = response.rooms
                 room_details = []
 
-                # Process each joined room.
+            
                 for room_id in joined_rooms:
-                    # Default: name falls back to the room_id.
+                    
                     room_info = {"room_id": room_id, "is_space": False, "name": room_id}
-                    # Fetch the state events for this room.
+                    
                     state_response = await self.client.room_get_state(room_id)
 
                     if hasattr(state_response, "events"):
@@ -157,30 +210,28 @@ class MatrixClient:
                             event_type = event.get("type")
                             content = event.get("content", {})
 
-                            # Check for space marker.
+                            
                             if event_type == "m.room.create" and content.get("type") == "m.space":
                                 room_info["is_space"] = True
 
-                            # Use room name if available.
                             elif event_type == "m.room.name":
                                 room_name = content.get("name")
                                 if room_name:
                                     room_info["name"] = room_name
 
-                            # Handle space children.
                             elif event_type == "m.space.child":
-                                # The state_key of an m.space.child event is the child room ID.
+    
                                 child_room_id = event.get("state_key")
                                 if child_room_id:
-                                    # Initialize the children list if it doesn't exist.
+                            
                                     room_info.setdefault("children", []).append(child_room_id)
 
                     room_details.append(room_info)
 
-                # Build a mapping of room_id -> room_info to get details for child rooms.
+            
                 room_mapping = {room["room_id"]: room for room in room_details}
 
-                # Update space rooms to include detailed child info.
+                
                 for room in room_details:
                     if room.get("is_space") and "children" in room:
                         updated_children = []
@@ -195,7 +246,6 @@ class MatrixClient:
                                 updated_children.append({"room_id": child_id, "name": child_id})
                         room["children"] = updated_children
 
-                # Emit the processed room and space data.
                 self.signals.roomSignal.emit(room_details)
                 self.signals.messageSignal.emit(
                     f"Fetched {len(room_details)} rooms/spaces.", "system"
@@ -207,42 +257,61 @@ class MatrixClient:
             self.signals.messageSignal.emit(f"Error fetching rooms: {str(e)}", "error")
 
     async def fetch_room_messages(self, room_id, limit=1000):
+        
         if not self.client or not self.client.access_token:
             self.signals.messageSignal.emit("Cannot fetch room contexts: Not logged in.", "warning")
             return
-
+    
         try:
             response = await self.client.room_messages(
                 room_id,
-                start=None,
+                start="",
                 limit=limit,
-                direction="b"
+                direction="f"
             )
-
-            if hasattr(response, "chunk") and response.chunk:
+    
+            if isinstance(response, nio.RoomMessagesResponse):
                 for event in response.chunk:
-                    # Only process events that are standard messages.
-                    event_type = getattr(event, "type", None)
-                    if event_type != "m.room.message":
-                        continue
+                    if isinstance(event, nio.RoomMessageText):
+                        sender = event.sender
+                        ts = event.server_timestamp
+                        message = event.body
+    
+                        time_str = datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M:%S") if ts else "unknown"
+    
+                        formatted_message = f"{sender} [{time_str}] : {message}"
 
-                    sender = getattr(event, "sender", "unknown")
-                    ts = getattr(event, "origin_server_ts", None)
-                    content = getattr(event, "content", {})
-
-                    # Only process if content is a dict and has a "body"
-                    if not isinstance(content, dict):
-                        continue
-                    message = content.get("body", "")
-
-                    time_str = datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M:%S") if ts else "unknown"
-
-                    formatted_message = f"{sender} {time_str} {message}"
-                    self.signals.messageSignal.emit(formatted_message, "user")
+                        self.signals.messageSignal.emit(formatted_message, "user")
             else:
-                self.signals.messageSignal.emit("No context events found.", "warning")
+                self.signals.messageSignal.emit(f"Error: {response.message}", "error")
         except Exception as e:
-            self.signals.messageSignal.emit(f"Error fetching room contexts: {str(e)}", "error")       
+            self.signals.messageSignal.emit(f"Error fetching room contexts: {str(e)}", "error")   
+
+    async def send_message(self, room_id: str, message_content: str):
+        
+        if not self.client or not self.client.access_token:
+            self.signals.messageSignal.emit("Cannot send message: Not logged in.", "warning")
+            return
+
+        try:
+
+            response = await self.client.room_send(
+                room_id,
+                message_type="m.room.message",
+                content={
+                    "msgtype": "m.text",
+                    "body": message_content
+                }
+            )
+            
+            if hasattr(response, "event_id") and response.event_id:
+                pass
+            else:
+                self.signals.messageSignal.emit(
+                    f"Failed to send message: {getattr(response, 'message', 'Unknown error')}", "error"
+                )
+        except Exception as e:
+            self.signals.messageSignal.emit(f"Error sending message: {str(e)}", "error")            
 
     async def stop(self):
         
