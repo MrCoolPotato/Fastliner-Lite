@@ -4,8 +4,10 @@ from nio import (
     LogoutResponse,
     SyncResponse,
     SyncError,
+    ErrorResponse,
 )
 import nio
+from nio.api import RoomPreset, RoomVisibility
 
 from CONFIG.env import HOMESERVER
 
@@ -25,15 +27,14 @@ class MatrixClient:
         #sync control
         self.running = False
         self.next_batch = None
-
-
+    
     async def login(self, username, password):
       
+        self.client = AsyncClient(self.homeserver, username)
         try:
-            self.client = AsyncClient(self.homeserver, username)
-
-            response = await self.client.login(password)
+            response = await asyncio.wait_for(self.client.login(password), timeout=5)
             self.signals.messageSignal.emit(f"Raw response: {response}", "server")
+    
             if isinstance(response, LoginResponse):
                 self.client.user_id = response.user_id
                 self.client.access_token = response.access_token
@@ -45,9 +46,12 @@ class MatrixClient:
                 return True
             else:
                 self.signals.messageSignal.emit(
-                    f"Login failed: {response.message}", "error"
+                    f"Login failed: {response.message if hasattr(response, 'message') else 'Unknown error'}", "error"
                 )
                 return False
+        except asyncio.TimeoutError:
+            self.signals.messageSignal.emit("Login process timed out.", "error")
+            return False
         except Exception as e:
             self.signals.messageSignal.emit(f"Login error: {str(e)}", "error")
             return False
@@ -389,8 +393,47 @@ class MatrixClient:
             else:
                 self.signals.messageSignal.emit(f"Error: {response.message}", "error")
         except Exception as e:
-            self.signals.messageSignal.emit(f"Error listing my events: {str(e)}", "error")          
+            self.signals.messageSignal.emit(f"Error listing my events: {str(e)}", "error") 
 
+    async def create_room(self, name: str, visibility: str = "private", is_space: bool = False):
+
+        if not self.client or not self.client.access_token:
+            self.signals.messageSignal.emit(
+                "Cannot create room: Not logged in.", "warning"
+            )
+            return None
+
+        
+        if visibility.lower() == "public":
+            visibility_enum = RoomVisibility.public
+            preset = RoomPreset.public_chat
+        else:
+            visibility_enum = RoomVisibility.private
+            preset = RoomPreset.private_chat
+
+        try:
+            response = await self.client.room_create(
+                name=name,
+                visibility=visibility_enum,     
+                preset=preset,           
+                room_type="m.space" if is_space else None,           
+                space=is_space
+            )
+
+            if hasattr(response, "room_id") and response.room_id:
+                room_id = response.room_id
+                msg = f"Created {'space' if is_space else 'room'} '{name}' successfully: {room_id}"
+                self.signals.messageSignal.emit(msg, "success")
+                return room_id
+            else:
+                error_msg = getattr(response, "message", "Unknown error")
+                self.signals.messageSignal.emit(f"Room creation failed: {error_msg}", "error")
+                return None
+
+        except Exception as e:
+            self.signals.messageSignal.emit(f"Error creating room: {str(e)}", "error")
+            return None
+    
     async def stop(self):
         
         await self.stop_syncing()

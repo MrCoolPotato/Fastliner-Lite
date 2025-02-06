@@ -9,8 +9,25 @@
         "text_error": "#cc241d",   
         "text_success": "#98971a",
         "text_warning": "#d79921",
+        "text_server": "#d65d0e",
+        "text_debug": "#b16286",
         "cli_widget_border_color": "white",
         "input_field_border_color": "white",
-        "central_widget_border_color": "none"
+        "central_widget_border_color": "none",
+        "cli_widget_color": "255, 255, 255, 1",
+        "input_field_color": "255, 255, 255, 1",
+        "central_widget_color": "255, 255, 255, 0.5",
+        "sidebar_splitter_color": "#282828",
+        "sidebar_color": "255, 255, 255, 1",
+        "sidebar_border_color": "white",
+        "tree_background_color": "255, 255, 255, 1",
+        "tree_color": "#282828",
+        "tree_item_color": "#282828",
+        "tree_item_selected_color": "255, 255, 255, 0.5",
+        "tree_category_icon_color_closed": "255, 255, 255, 0.5",
+        "tree_category_icon_color_open": "255, 255, 255, 0.5",
+        "tree_item_hover_color": "255, 255, 255, 0.5",
+        "tree_item_indentation_color": "255, 255, 255, 1.0",
+        "tree_category_indentation_color": "255, 255, 255, 1.0"
     }
 }

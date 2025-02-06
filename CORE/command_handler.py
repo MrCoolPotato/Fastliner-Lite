@@ -45,6 +45,8 @@ class CommandHandler(QObject):
                 "  /logout\n"
                 "  -\n"
                 "  /whoami\n"
+                "  /myevents\n"
+                "  /create_room <name> [--public|--private] [--space]\n"
             ), "system")
 
         elif cmd_lower == "/settings":
@@ -70,6 +72,35 @@ class CommandHandler(QObject):
 
         elif cmd_lower == "/myevents":
             asyncio.create_task(self._handle_myevents())    
+
+        elif cmd_lower == "/create_room":
+            if not args:
+                self.signals.messageSignal.emit(
+                    "Usage: /create_room <name> [--public|--private] [--space]",
+                    "warning"
+                )
+                return
+
+            name = args[0]
+            visibility = "private"
+            is_space = False
+
+            
+            for arg in args[1:]:
+                arg = arg.lower()
+                if arg == "--public":
+                    visibility = "public"
+                elif arg == "--private":
+                    visibility = "private"
+                elif arg == "--space":
+                    is_space = True
+
+            self.signals.messageSignal.emit(
+                f"Creating {'space' if is_space else 'room'} '{name}' with visibility '{visibility}'.",
+                "system"
+            )
+
+            asyncio.create_task(self.matrix_client.create_room(name, visibility, is_space))
 
         elif cmd_lower == "/sidebar":
             if self.main_window:
@@ -98,6 +129,13 @@ class CommandHandler(QObject):
 
         else:
             self.signals.messageSignal.emit(f"Unknown command: {command}", "error")
+
+    async def _handle_create_room(self, name: str, visibility: str, room_type: str):
+        room_id = await self.matrix_client.create_room(name, visibility, room_type)
+        if room_id:
+            self.signals.messageSignal.emit(f"{room_type.capitalize()} created successfully: {room_id}", "success")
+        else:
+            self.signals.messageSignal.emit(f"{room_type.capitalize()} creation failed.", "error")         
 
     async def _handle_whoami(self):
 
