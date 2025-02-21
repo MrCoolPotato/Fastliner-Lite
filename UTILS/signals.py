@@ -12,6 +12,7 @@ class SignalManager(QObject):
     commandSignal = Signal(str, list)
     roomSignal = Signal(list)
     logoutSignal = Signal()
+    blankSignal = Signal()
 
     def __new__(cls):
         if cls._instance is None:

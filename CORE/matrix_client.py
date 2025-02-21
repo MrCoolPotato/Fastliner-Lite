@@ -362,6 +362,10 @@ class MatrixClient:
         if not self.client.user_id:
             self.signals.messageSignal.emit("User ID not set; cannot list events.", "warning")
             return
+        
+        if not room_id:
+            self.signals.messageSignal.emit("No room ID set; cannot list events.", "warning")
+            return
 
         try:
             
@@ -394,6 +398,90 @@ class MatrixClient:
                 self.signals.messageSignal.emit(f"Error: {response.message}", "error")
         except Exception as e:
             self.signals.messageSignal.emit(f"Error listing my events: {str(e)}", "error") 
+            
+    async def _fetch_room_state(self, room_id: str) -> dict:
+        
+        details = {
+            "room_id": room_id,
+            "room_name": room_id,
+            "is_space": False,
+            "power_level": "unknown",
+        }
+        try:
+            state_response = await self.client.room_get_state(room_id)
+            if hasattr(state_response, "events"):
+                power_levels_content = None
+                for event in state_response.events:
+                    # Get event type.
+                    event_type = (
+                        event.get("type") if isinstance(event, dict)
+                        else getattr(event, "type", None)
+                    )
+                    if event_type == "m.room.name":
+                        content = (
+                            event.get("content") if isinstance(event, dict)
+                            else getattr(event, "content", {})
+                        )
+                        if isinstance(content, dict) and "name" in content:
+                            details["room_name"] = content.get("name")
+                    elif event_type == "m.room.create":
+                        content = (
+                            event.get("content") if isinstance(event, dict)
+                            else getattr(event, "content", {})
+                        )
+                        if isinstance(content, dict) and content.get("type") == "m.space":
+                            details["is_space"] = True
+                    elif event_type == "m.room.power_levels":
+                        power_levels_content = (
+                            event.get("content") if isinstance(event, dict)
+                            else getattr(event, "content", {})
+                        )
+                if power_levels_content:
+                    user_power = power_levels_content.get("users", {}).get(self.client.user_id)
+                    if user_power is None:
+                        user_power = power_levels_content.get("users_default", 0)
+                    details["power_level"] = user_power
+        except Exception as state_error:
+            self.signals.messageSignal.emit(
+                f"Warning: Could not fetch state for room {room_id}: {state_error}", "warning"
+            )
+        return details
+
+    async def list_my_rooms(self):
+        
+        if not self.client or not self.client.access_token:
+            self.signals.messageSignal.emit("Cannot list rooms: Not logged in.", "warning")
+            return
+
+        try:
+            response = await self.client.joined_rooms()
+            if not hasattr(response, "rooms"):
+                self.signals.messageSignal.emit("Failed to retrieve joined rooms.", "error")
+                return
+
+            joined_rooms = response.rooms
+
+            # Create tasks to fetch room state concurrently.
+            tasks = [self._fetch_room_state(room_id) for room_id in joined_rooms]
+            room_details_list = await asyncio.gather(*tasks)
+
+            room_list_messages = []
+            for details in room_details_list:
+                type_label = "[Space]" if details["is_space"] else "[Room]"
+                entry = (
+                    f"{type_label} {details['room_name']} ({details['room_id']}) "
+                    f"- Power Level: {details['power_level']}"
+                )
+                room_list_messages.append(entry)
+
+            if room_list_messages:
+                for entry in room_list_messages:
+                    self.signals.messageSignal.emit(entry, "system")
+            else:
+                self.signals.messageSignal.emit("No joined rooms found.", "system")
+
+        except Exception as e:
+            self.signals.messageSignal.emit(f"Error listing rooms: {str(e)}", "error")
 
     async def create_room(self, name: str, visibility: str = "private", is_space: bool = False):
 
@@ -402,7 +490,6 @@ class MatrixClient:
                 "Cannot create room: Not logged in.", "warning"
             )
             return None
-
         
         if visibility.lower() == "public":
             visibility_enum = RoomVisibility.public

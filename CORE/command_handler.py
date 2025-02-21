@@ -33,6 +33,7 @@ class CommandHandler(QObject):
             self.signals.messageSignal.emit((
                 "Available commands:\n"
                 "  /help\n"
+                "  /blank\n"
                 "  /settings\n"
                 "  /exit\n"
                 "  /minimize\n"
@@ -46,6 +47,7 @@ class CommandHandler(QObject):
                 "  -\n"
                 "  /whoami\n"
                 "  /myevents\n"
+                "  /myrooms\n"
                 "  /create_room <name> [--public|--private] [--space]\n"
             ), "system")
 
@@ -65,13 +67,19 @@ class CommandHandler(QObject):
             self._handle_fullscreen()
 
         elif cmd_lower == "/clear":
-            self._handle_clear()   
+            self._handle_clear() 
+
+        elif cmd_lower == "/blank":
+            self._handle_blank()     
 
         elif cmd_lower == "/whoami":
             asyncio.create_task(self._handle_whoami())
 
         elif cmd_lower == "/myevents":
-            asyncio.create_task(self._handle_myevents())    
+            asyncio.create_task(self._handle_myevents())   
+            
+        elif cmd_lower == "/myrooms":
+            asyncio.create_task(self._handle_myrooms())      
 
         elif cmd_lower == "/create_room":
             if not args:
@@ -143,7 +151,11 @@ class CommandHandler(QObject):
 
     async def _handle_myevents(self):
         
-        await self.matrix_client.list_my_events()           
+        await self.matrix_client.list_my_events()  
+
+    async def _handle_myrooms(self):
+        
+        await self.matrix_client.list_my_rooms()              
 
     async def _handle_login(self, username: str, password: str):
 
@@ -209,4 +221,8 @@ class CommandHandler(QObject):
         if self.main_window and hasattr(self.main_window, "cli_widget"):
             self.main_window.cli_widget.clear()
         else:
-            self.signals.messageSignal.emit("No main window reference. Cannot clear local screen.", "error")        
+            self.signals.messageSignal.emit("No main window reference. Cannot clear local screen.", "error") 
+
+    def _handle_blank(self):
+
+        self.signals.blankSignal.emit()
