@@ -49,6 +49,7 @@ class CommandHandler(QObject):
                 "  /myevents\n"
                 "  /myrooms\n"
                 "  /create_room <name> [--public|--private] [--space]\n"
+                "  /leaveroom <id>\n"
             ), "system")
 
         elif cmd_lower == "/settings":
@@ -79,7 +80,15 @@ class CommandHandler(QObject):
             asyncio.create_task(self._handle_myevents())   
             
         elif cmd_lower == "/myrooms":
-            asyncio.create_task(self._handle_myrooms())      
+            asyncio.create_task(self._handle_myrooms())   
+
+        elif cmd_lower == "/leaveroom":
+            if not args:
+                self.signals.messageSignal.emit("Usage: /deleteroom <room_id>|<room_id2>|...", "warning")
+            else:
+                room_ids = args[0]
+                self.signals.messageSignal.emit(f"Deleting room(s): {room_ids}", "system")
+                asyncio.create_task(self._handle_leave_room(room_ids))       
 
         elif cmd_lower == "/create_room":
             if not args:
@@ -226,3 +235,8 @@ class CommandHandler(QObject):
     def _handle_blank(self):
 
         self.signals.blankSignal.emit()
+
+    async def _handle_leave_room(self, room_ids: str):
+        
+        await self.matrix_client.leave_room(room_ids)
+     
