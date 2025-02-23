@@ -94,6 +94,8 @@ class MainWindow(QMainWindow):
                 background-color: rgba({tree_background_color});
                 color: {tree_color};
                 border: none;
+                border-top-left-radius: {scaled_radius}px;
+                border-bottom-left-radius: {scaled_radius}px;
                 padding: 5px;
             }}
             QTreeWidget::item {{
