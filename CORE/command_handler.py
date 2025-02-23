@@ -87,7 +87,7 @@ class CommandHandler(QObject):
                 self.signals.messageSignal.emit("Usage: /deleteroom <room_id>|<room_id2>|...", "warning")
             else:
                 room_ids = args[0]
-                self.signals.messageSignal.emit(f"Deleting room(s): {room_ids}", "system")
+                self.signals.messageSignal.emit(f"Leaving room(s): {room_ids}", "system")
                 asyncio.create_task(self._handle_leave_room(room_ids))       
 
         elif cmd_lower == "/create_room":

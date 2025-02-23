@@ -522,16 +522,17 @@ class MatrixClient:
             return None
         
     async def leave_room(self, room_ids: str):
-      
+
         ids = [rid.strip() for rid in room_ids.split("|") if rid.strip()]
         successful = []
         
         for rid in ids:
             try:
-             
                 leave_response = await self.client.room_leave(rid)
-                if hasattr(leave_response, "event_id"):
-                    
+                
+                if (hasattr(leave_response, "transport_response") and 
+                    leave_response.transport_response is not None and 
+                    leave_response.transport_response.status == 200):
                     await self.client.room_forget(rid)
                     successful.append(rid)
                     self.signals.messageSignal.emit(f"Room {rid} left.", "success")
@@ -540,7 +541,7 @@ class MatrixClient:
             except Exception as e:
                 self.signals.messageSignal.emit(f"Error leaving room {rid}: {str(e)}", "error")
         
-        return successful if successful else None    
+        return successful if successful else None 
     
     async def stop(self):
         
