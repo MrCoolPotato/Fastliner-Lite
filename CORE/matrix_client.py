@@ -27,6 +27,8 @@ class MatrixClient:
         #sync control
         self.running = False
         self.next_batch = None
+
+        self.pending_invites = {}
     
     async def login(self, username, password):
       
@@ -177,8 +179,44 @@ class MatrixClient:
                             
                             formatted_audit = f"{sender} [{time_str}] : {content_str}"
                             self.signals.messageSignal.emit(formatted_audit, "server")
-                         
 
+        if response.rooms and hasattr(response.rooms, "invite"):
+            
+            if response.rooms.invite:
+                invites = response.rooms.invite
+                updated_invites = {}
+                for room_id, invite_data in invites.items():
+                    
+                    room_name = room_id
+                    inviter = "unknown"
+                    if hasattr(invite_data, "invite_state"):
+                        invite_state = invite_data.invite_state
+                        
+                        if isinstance(invite_state, list):
+                            events = invite_state
+                        else:
+                            events = invite_state.get("events", [])
+                            
+                        for event in events:
+                            
+                            if isinstance(event, nio.InviteNameEvent):
+                                room_name = event.name  
+                            elif isinstance(event, nio.InviteMemberEvent):
+                               
+                                if event.membership == "invite":
+                                    inviter = event.sender
+                            
+                            elif isinstance(event, dict):
+                                event_type = event.get("type")
+                                if event_type == "m.room.name":
+                                    room_name = event.get("content", {}).get("name", room_id)
+                                elif event_type == "m.room.member":
+                                    if event.get("membership") == "invite":
+                                        inviter = event.get("sender", "unknown")
+                    updated_invites[room_id] = {"room_name": room_name, "inviter": inviter}
+                
+                self.pending_invites = updated_invites                
+                         
     async def stop_syncing(self):
 
         self.signals.messageSignal.emit("Stopping sync process...", "system")
@@ -536,12 +574,85 @@ class MatrixClient:
                     await self.client.room_forget(rid)
                     successful.append(rid)
                     self.signals.messageSignal.emit(f"Room {rid} left.", "success")
+                    asyncio.create_task(self.fetch_rooms_and_spaces())
                 else:
                     self.signals.messageSignal.emit(f"Failed to leave room {rid}.", "error")
             except Exception as e:
                 self.signals.messageSignal.emit(f"Error leaving room {rid}: {str(e)}", "error")
         
         return successful if successful else None 
+
+    async def accept_invite(self, room_id: str):
+        
+        try:
+            response = await self.client.join(room_id)
+            if hasattr(response, "room_id") and response.room_id:
+                self.signals.messageSignal.emit(f"Accepted invite for room {room_id}.", "success")
+                if room_id in self.pending_invites:
+                    del self.pending_invites[room_id]
+                asyncio.create_task(self.fetch_rooms_and_spaces())
+                return True
+            else:
+                self.signals.messageSignal.emit(f"Failed to accept invite for room {room_id}.", "error")
+                return False
+        except Exception as e:
+            self.signals.messageSignal.emit(f"Error accepting invite for room {room_id}: {str(e)}", "error")
+            return False
+
+    async def reject_invite(self, room_id: str):
+        
+        try:
+            response = await self.client.room_leave(room_id)
+            if (hasattr(response, "transport_response") and 
+                response.transport_response is not None and 
+                response.transport_response.status == 200):
+                self.signals.messageSignal.emit(f"Rejected invite for room {room_id}.", "success")
+                if room_id in self.pending_invites:
+                    del self.pending_invites[room_id]
+                asyncio.create_task(self.fetch_rooms_and_spaces())
+                return True
+            else:
+                self.signals.messageSignal.emit(f"Failed to reject invite for room {room_id}.", "error")
+                return False
+        except Exception as e:
+            self.signals.messageSignal.emit(f"Error rejecting invite for room {room_id}: {str(e)}", "error")
+            return False
+        
+    async def invite_user(self, room_id: str, invitee_id: str):
+       
+        if not self.client or not self.client.access_token:
+            self.signals.messageSignal.emit("Cannot invite user: Not logged in.", "warning")
+            return False
+        
+        if not invitee_id.startswith('@'):
+            self.signals.messageSignal.emit("Invalid user ID format. User IDs should start with '@'.", "warning")
+            return False
+
+        try:
+            response = await self.client.room_invite(room_id, invitee_id)
+            
+            if hasattr(response, "event_id") and response.event_id:
+                self.signals.messageSignal.emit(
+                    f"Successfully invited {invitee_id} to room {room_id}.", "success"
+                )
+                return True
+            elif (hasattr(response, "transport_response") and 
+                response.transport_response is not None and 
+                response.transport_response.status == 200):
+                self.signals.messageSignal.emit(
+                    f"Successfully invited {invitee_id} to room {room_id}.", "success"
+                )
+                return True
+            else:
+                self.signals.messageSignal.emit(
+                    f"Failed to invite {invitee_id} to room {room_id}.", "error"
+                )
+                return False
+        except Exception as e:
+            self.signals.messageSignal.emit(
+                f"Error inviting {invitee_id} to room {room_id}: {str(e)}", "error"
+            )
+            return False    
     
     async def stop(self):
         

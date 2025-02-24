@@ -80,7 +80,7 @@ class MainWindow(QMainWindow):
         self.sidebar.setStyleSheet(f"""
             QWidget#Sidebar {{
                 background-color: rgba({sidebar_color});
-                border-right: 1px solid {sidebar_border_color};
+                border: 1px solid {sidebar_border_color};
                 border-top-left-radius: {scaled_radius}px;
                 border-bottom-left-radius: {scaled_radius}px;
             }}
@@ -139,9 +139,9 @@ class MainWindow(QMainWindow):
         self.callwidget.setStyleSheet(f"""
             QWidget#CallWidget {{
                 background-color: rgba({sidebar_color});
-                border-right: 1px solid {sidebar_border_color};
-                border-top-left-radius: {scaled_radius}px;
-                border-bottom-left-radius: {scaled_radius}px;
+                border: 1px solid {sidebar_border_color};
+                border-top-right-radius: {scaled_radius}px;
+                border-bottom-right-radius: {scaled_radius}px;
             }}
         """)
 

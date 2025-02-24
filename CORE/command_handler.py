@@ -50,6 +50,8 @@ class CommandHandler(QObject):
                 "  /myrooms\n"
                 "  /create_room <name> [--public|--private] [--space]\n"
                 "  /leaveroom <id>\n"
+                "  /invite <room_id> <user_id>\n"
+                "  /myinvites [accept/reject] [<room_id>]\n"
             ), "system")
 
         elif cmd_lower == "/settings":
@@ -80,7 +82,39 @@ class CommandHandler(QObject):
             asyncio.create_task(self._handle_myevents())   
             
         elif cmd_lower == "/myrooms":
-            asyncio.create_task(self._handle_myrooms())   
+            asyncio.create_task(self._handle_myrooms())  
+
+        elif cmd_lower == "/invite":
+            
+            if len(args) != 2:
+                self.signals.messageSignal.emit("Usage: /invite <room_id> <user_id>", "warning")
+            else:
+                room_id = args[0]
+                user_id = args[1]
+                self.signals.messageSignal.emit(
+                    f"Inviting {user_id} to room {room_id}...", "system"
+                )
+                asyncio.create_task(self._handle_invite(room_id, user_id))     
+
+        elif cmd_lower == "/myinvites":
+            if not self.matrix_client:
+                self.signals.messageSignal.emit("Not logged in.", "warning")
+                return
+    
+            if len(args) == 0:
+                asyncio.create_task(self._handle_list_invites())
+           
+            elif len(args) >= 2:
+                action = args[0].lower()
+                room_id = args[1]
+                if action == "accept":
+                    asyncio.create_task(self._handle_accept_invite(room_id))
+                elif action == "reject":
+                    asyncio.create_task(self._handle_reject_invite(room_id))
+                else:
+                    self.signals.messageSignal.emit("Usage: /myinvites [accept|reject] <room_id>", "warning")
+            else:
+                self.signals.messageSignal.emit("Usage: /myinvites [accept|reject] <room_id>", "warning")    
 
         elif cmd_lower == "/leaveroom":
             if not args:
@@ -231,6 +265,44 @@ class CommandHandler(QObject):
             self.main_window.cli_widget.clear()
         else:
             self.signals.messageSignal.emit("No main window reference. Cannot clear local screen.", "error") 
+
+    async def _handle_list_invites(self):
+        invites = self.matrix_client.pending_invites
+        if invites:
+            for room_id, data in invites.items():
+                room_name = data.get("room_name", room_id)
+                inviter = data.get("inviter", "unknown")
+                self.signals.messageSignal.emit(
+                    f"Invite from {inviter}: {room_name} ({room_id})", "system"
+                )
+        else:
+            self.signals.messageSignal.emit("No pending invites found.", "system")
+
+    async def _handle_accept_invite(self, room_id: str):
+        result = await self.matrix_client.accept_invite(room_id)
+        if result:
+            self.signals.messageSignal.emit(f"Invite accepted for room {room_id}.", "success")
+        else:
+            self.signals.messageSignal.emit(f"Failed to accept invite for room {room_id}.", "error")
+
+    async def _handle_reject_invite(self, room_id: str):
+        result = await self.matrix_client.reject_invite(room_id)
+        if result:
+            self.signals.messageSignal.emit(f"Invite rejected for room {room_id}.", "success")
+        else:
+            self.signals.messageSignal.emit(f"Failed to reject invite for room {room_id}.", "error")     
+
+    async def _handle_invite(self, room_id: str, user_id: str):
+        
+        result = await self.matrix_client.invite_user(room_id, user_id)
+        if result:
+            self.signals.messageSignal.emit(
+                f"Invitation sent to {user_id} for room {room_id}.", "success"
+            )
+        else:
+            self.signals.messageSignal.emit(
+                f"Failed to invite {user_id} to room {room_id}.", "error"
+            )           
 
     def _handle_blank(self):
 
