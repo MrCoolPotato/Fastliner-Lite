@@ -652,7 +652,79 @@ class MatrixClient:
             self.signals.messageSignal.emit(
                 f"Error inviting {invitee_id} to room {room_id}: {str(e)}", "error"
             )
-            return False    
+            return False  
+        
+    async def list_pinned_events(self, room_id: str) -> list:
+        try:
+            # Use room_get_state_event to fetch the pinned events state event.
+            response = await self.client.room_get_state_event(room_id, "m.room.pinned_events", "")
+            if response and hasattr(response, "content"):
+                pinned = response.content.get("pinned", [])
+            else:
+                pinned = []
+            return pinned
+        except Exception as e:
+            self.signals.messageSignal.emit(f"Error listing pinned events: {e}", "error")
+            return []
+
+    async def pin_event(self, room_id: str, event_id: str) -> bool:
+        try:
+            # Retrieve current pinned events.
+            response = await self.client.room_get_state_event(room_id, "m.room.pinned_events", "")
+            if response and hasattr(response, "content"):
+                pinned = response.content.get("pinned", [])
+            else:
+                pinned = []
+
+            if event_id not in pinned:
+                pinned.append(event_id)
+
+            put_response = await self.client.room_put_state(
+                room_id,
+                "m.room.pinned_events",
+                "",
+                {"pinned": pinned}
+            )
+            if put_response and hasattr(put_response, "event_id"):
+                self.signals.messageSignal.emit(f"Event {event_id} pinned.", "success")
+                return True
+            else:
+                self.signals.messageSignal.emit(f"Failed to pin event {event_id}.", "error")
+                return False
+        except Exception as e:
+            self.signals.messageSignal.emit(f"Error pinning event: {e}", "error")
+            return False
+
+    async def unpin_event(self, room_id: str, event_id: str) -> bool:
+        try:
+            response = await self.client.room_get_state_event(room_id, "m.room.pinned_events", "")
+            if response and hasattr(response, "content"):
+                pinned = response.content.get("pinned", [])
+            else:
+                pinned = []
+
+            if event_id in pinned:
+                pinned.remove(event_id)
+
+            put_response = await self.client.room_put_state(
+                room_id,
+                "m.room.pinned_events",
+                "",
+                {"pinned": pinned}
+            )
+            if put_response and hasattr(put_response, "event_id"):
+                self.signals.messageSignal.emit(f"Event {event_id} unpinned.", "success")
+                return True
+            else:
+                self.signals.messageSignal.emit(f"Failed to unpin event {event_id}.", "error")
+                return False
+        except Exception as e:
+            self.signals.messageSignal.emit(f"Error unpinning event: {e}", "error")
+            return False   
+
+    async def current_room_id(self):
+        
+        return OpenRoomManager.get_current_room()        
     
     async def stop(self):
         
