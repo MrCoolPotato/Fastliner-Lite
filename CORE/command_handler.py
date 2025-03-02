@@ -52,6 +52,7 @@ class CommandHandler(QObject):
                 "  /leaveroom <id>\n"
                 "  /invite <room_id> <user_id>\n"
                 "  /myinvites [accept/reject] [<room_id>]\n"
+                "  /pin [--list|--unpin] <event_id>\n"
             ), "system")
 
         elif cmd_lower == "/settings":

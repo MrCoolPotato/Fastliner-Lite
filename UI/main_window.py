@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtCore import Qt, QPoint, QEvent
-from PySide6.QtGui import QTextCursor
+from PySide6.QtGui import QTextCursor, QKeySequence, QGuiApplication
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from UTILS.signals import SignalManager
@@ -30,6 +30,8 @@ class MainWindow(QMainWindow):
         self.matrix_client = matrix_client
 
         self.ui_scale = ui_scale
+
+        self.sanitize_paste = True # This setting intercepts rich text injection into the input field.
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -266,12 +268,17 @@ class MainWindow(QMainWindow):
             if event.key() == Qt.Key_Return and not event.modifiers() & Qt.ShiftModifier:
                 self.handle_user_input()
                 return True
-        return super().eventFilter(obj, event)    
+            elif event.matches(QKeySequence.Paste) and self.sanitize_paste:
+                clipboard = QGuiApplication.clipboard()
+                plain_text = clipboard.text()
+                self.input_field.insertPlainText(plain_text)
+                return True
+        return super().eventFilter(obj, event)
 
     def adjust_input_height(self):
         document_height = self.input_field.document().size().height()
         max_height = int(100 * self.ui_scale)
-        self.input_field.setMaximumHeight(min(max_height, document_height + 10)) 
+        self.input_field.setMaximumHeight(min(max_height, document_height + 10))   
 
     def toggle_sidebar(self):
     

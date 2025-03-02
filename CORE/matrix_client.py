@@ -669,28 +669,31 @@ class MatrixClient:
 
     async def pin_event(self, room_id: str, event_id: str) -> bool:
         try:
-            # Retrieve current pinned events.
-            response = await self.client.room_get_state_event(room_id, "m.room.pinned_events", "")
-            if response and hasattr(response, "content"):
-                pinned = response.content.get("pinned", [])
-            else:
+            # Retrieve current pinned events using room_get_state_event.
+            state_event = await self.client.room_get_state_event(room_id, "m.room.pinned_events", "")
+            if isinstance(state_event, ErrorResponse):
                 pinned = []
-
+            else:
+                pinned = state_event.content.get("pinned", [])
+                if not isinstance(pinned, list):
+                    pinned = []
+                    
+            # Add the event_id if it's not already pinned.
             if event_id not in pinned:
                 pinned.append(event_id)
-
-            put_response = await self.client.room_put_state(
-                room_id,
-                "m.room.pinned_events",
-                "",
-                {"pinned": pinned}
-            )
-            if put_response and hasattr(put_response, "event_id"):
-                self.signals.messageSignal.emit(f"Event {event_id} pinned.", "success")
-                return True
-            else:
-                self.signals.messageSignal.emit(f"Failed to pin event {event_id}.", "error")
+                
+            # Prepare the content as a dictionary.
+            content = {"pinned": pinned}
+            
+            # Update the state using room_put_state.
+            put_response = await self.client.room_put_state(room_id, "m.room.pinned_events", "", content)
+            if isinstance(put_response, ErrorResponse):
+                self.signals.messageSignal.emit(
+                    f"Failed to pin event {event_id}: {put_response.message}", "error"
+                )
                 return False
+            self.signals.messageSignal.emit(f"Event {event_id} pinned.", "success")
+            return True
         except Exception as e:
             self.signals.messageSignal.emit(f"Error pinning event: {e}", "error")
             return False
