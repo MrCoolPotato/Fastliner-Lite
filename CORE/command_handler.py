@@ -46,12 +46,16 @@ class CommandHandler(QObject):
                 "  /logout\n"
                 "  -\n"
                 "  /whoami\n"
+                "  -\n"
                 "  /myevents\n"
                 "  /myrooms\n"
+                "  -\n"
                 "  /create_room <name> [--public|--private] [--space]\n"
                 "  /leaveroom <id>\n"
+                "  -\n"
                 "  /invite <room_id> <user_id>\n"
                 "  /myinvites [accept/reject] [<room_id>]\n"
+                "  -\n"
                 "  /pin [--list|--unpin] <event_id>\n"
             ), "system")
 
