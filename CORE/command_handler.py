@@ -180,7 +180,8 @@ class CommandHandler(QObject):
             asyncio.create_task(self._handle_logout())      
 
         elif cmd_lower == "/pin":
-            
+
+            self.signals.messageSignal.emit("This command is WIP and may not function as intended.", "debug")
             current_room = self.matrix_client.current_room_id
             if not current_room:
                 self.signals.messageSignal.emit("No room open for pin operations.", "warning")

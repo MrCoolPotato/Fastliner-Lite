@@ -656,12 +656,11 @@ class MatrixClient:
         
     async def list_pinned_events(self, room_id: str) -> list:
         try:
-            # Use room_get_state_event to fetch the pinned events state event.
             response = await self.client.room_get_state_event(room_id, "m.room.pinned_events", "")
-            if response and hasattr(response, "content"):
-                pinned = response.content.get("pinned", [])
-            else:
-                pinned = []
+            if isinstance(response, ErrorResponse):
+                self.signals.messageSignal.emit(f"Error listing pinned events: {response.message}", "error")
+                return []
+            pinned = response.content.get("pinned", []) if hasattr(response, "content") else []
             return pinned
         except Exception as e:
             self.signals.messageSignal.emit(f"Error listing pinned events: {e}", "error")
@@ -669,23 +668,19 @@ class MatrixClient:
 
     async def pin_event(self, room_id: str, event_id: str) -> bool:
         try:
-            # Retrieve current pinned events using room_get_state_event.
             state_event = await self.client.room_get_state_event(room_id, "m.room.pinned_events", "")
             if isinstance(state_event, ErrorResponse):
                 pinned = []
             else:
-                pinned = state_event.content.get("pinned", [])
+                pinned = state_event.content.get("pinned", []) if hasattr(state_event, "content") else []
                 if not isinstance(pinned, list):
                     pinned = []
                     
-            # Add the event_id if it's not already pinned.
             if event_id not in pinned:
                 pinned.append(event_id)
-                
-            # Prepare the content as a dictionary.
+                    
             content = {"pinned": pinned}
             
-            # Update the state using room_put_state.
             put_response = await self.client.room_put_state(room_id, "m.room.pinned_events", "", content)
             if isinstance(put_response, ErrorResponse):
                 self.signals.messageSignal.emit(
@@ -697,33 +692,34 @@ class MatrixClient:
         except Exception as e:
             self.signals.messageSignal.emit(f"Error pinning event: {e}", "error")
             return False
-
+    
     async def unpin_event(self, room_id: str, event_id: str) -> bool:
         try:
             response = await self.client.room_get_state_event(room_id, "m.room.pinned_events", "")
-            if response and hasattr(response, "content"):
-                pinned = response.content.get("pinned", [])
-            else:
-                pinned = []
-
+            if isinstance(response, ErrorResponse):
+                self.signals.messageSignal.emit(f"Error fetching pinned events: {response.message}", "error")
+                return False
+            pinned = response.content.get("pinned", []) if hasattr(response, "content") else []
+    
             if event_id in pinned:
                 pinned.remove(event_id)
-
+    
+            content = {"pinned": pinned}
+    
             put_response = await self.client.room_put_state(
                 room_id,
                 "m.room.pinned_events",
                 "",
-                {"pinned": pinned}
+                content
             )
-            if put_response and hasattr(put_response, "event_id"):
-                self.signals.messageSignal.emit(f"Event {event_id} unpinned.", "success")
-                return True
-            else:
-                self.signals.messageSignal.emit(f"Failed to unpin event {event_id}.", "error")
+            if isinstance(put_response, ErrorResponse):
+                self.signals.messageSignal.emit(f"Failed to unpin event {event_id}: {put_response.message}", "error")
                 return False
+            self.signals.messageSignal.emit(f"Event {event_id} unpinned.", "success")
+            return True
         except Exception as e:
             self.signals.messageSignal.emit(f"Error unpinning event: {e}", "error")
-            return False   
+            return False
 
     async def current_room_id(self):
         
