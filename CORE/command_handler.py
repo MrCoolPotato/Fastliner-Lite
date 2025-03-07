@@ -5,6 +5,7 @@ from PySide6.QtCore import QObject
 from UTILS.signals import SignalManager
 
 from UI.settings_window import SettingsWindow
+from UI.room_settings_window import RoomSettingsWindow
 
 from CORE.matrix_client import MatrixClient
 
@@ -51,6 +52,7 @@ class CommandHandler(QObject):
                 "  /myrooms\n"
                 "  -\n"
                 "  /create_room <name> [--public|--private] [--space]\n"
+                "  /roomsettings <room_id>\n"
                 "  /leaveroom <id>\n"
                 "  -\n"
                 "  /invite <room_id> <user_id>\n"
@@ -205,6 +207,17 @@ class CommandHandler(QObject):
                 else:
                     
                     asyncio.create_task(self._handle_pin_event(args[0]))
+
+        elif cmd_lower == "/roomsettings":
+            self.signals.messageSignal.emit("This command is WIP and may not function as intended.", "debug")
+            if len(args) < 1:
+                self.signals.messageSignal.emit("Usage: /roomsettings <room_id>", "warning")
+            else:
+                room_id = args[0]
+                self.signals.messageSignal.emit(f"Opening room settings for room {room_id}...", "system")
+                
+                self.room_settings_window = RoomSettingsWindow(room_id, self.matrix_client)
+                self.room_settings_window.show()            
 
         else:
             self.signals.messageSignal.emit(f"Unknown command: {command}", "error")

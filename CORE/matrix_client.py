@@ -5,6 +5,9 @@ from nio import (
     SyncResponse,
     SyncError,
     ErrorResponse,
+    RoomPutStateResponse,
+    RoomGetStateEventResponse,
+    RoomGetStateEventError,
 )
 import nio
 from nio.api import RoomPreset, RoomVisibility
@@ -16,6 +19,8 @@ from UTILS.open_room_manager import OpenRoomManager
 import asyncio
 import aiohttp
 from datetime import datetime
+
+import json
 
 
 class MatrixClient:
@@ -720,6 +725,54 @@ class MatrixClient:
         except Exception as e:
             self.signals.messageSignal.emit(f"Error unpinning event: {e}", "error")
             return False
+        
+    async def get_room_power_levels(self, room_id: str) -> dict:
+        try:
+            response = await self.client.room_get_state_event(room_id, "m.room.power_levels", "")
+            
+            if isinstance(response, RoomGetStateEventResponse):
+                content = response.content
+                user_power = content.get("users", {}).get(self.client.user_id, content.get("users_default", 0))
+                return {"status": "success", "power": user_power, "content": content}
+            
+            elif isinstance(response, RoomGetStateEventError):
+                msg = response.message
+                self.signals.messageSignal.emit(f"Error fetching room power levels: {msg}", "error")
+                return {"status": "error", "message": msg}
+            
+            else:
+                self.signals.messageSignal.emit("Unexpected response format while fetching power levels.", "error")
+                return {"status": "error", "message": "Unexpected response format"}
+        
+        except Exception as e:
+            self.signals.messageSignal.emit(f"Error fetching room power levels: {e}", "error")
+            return {"status": "error", "message": str(e)}    
+        
+    async def update_room_power_levels(self, room_id: str, new_power: int) -> dict:
+
+        try:
+            response = await self.client.room_get_state_event(room_id, "m.room.power_levels", "")
+            if not hasattr(response, "content"):
+                current_content = {}
+            else:
+                current_content = response.content
+
+            users = current_content.get("users", {})
+            users[self.client.user_id] = new_power
+            current_content["users"] = users
+
+            content = json.loads(json.dumps(current_content))
+            put_response = await self.client.room_put_state(room_id, "m.room.power_levels", "", content)
+            if isinstance(put_response, RoomPutStateResponse):
+                self.signals.messageSignal.emit("Room power levels updated successfully.", "system")
+                return {"status": "success", "message": "Room power levels updated successfully."}
+            else:
+                msg = getattr(put_response, "message", "Unknown error")
+                self.signals.messageSignal.emit(f"Failed to update room power levels: {msg}", "error")
+                return {"status": "error", "message": msg}
+        except Exception as e:
+            self.signals.messageSignal.emit(f"Error updating room power levels: {e}", "error")
+            return {"status": "error", "message": str(e)}    
 
     async def current_room_id(self):
         
