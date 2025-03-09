@@ -727,26 +727,104 @@ class MatrixClient:
             return False
         
     async def get_room_power_levels(self, room_id: str) -> dict:
+
         try:
+            # Primary attempt: fetch using room_get_state_event.
             response = await self.client.room_get_state_event(room_id, "m.room.power_levels", "")
-            
+            content = None
             if isinstance(response, RoomGetStateEventResponse):
                 content = response.content
-                user_power = content.get("users", {}).get(self.client.user_id, content.get("users_default", 0))
-                return {"status": "success", "power": user_power, "content": content}
-            
             elif isinstance(response, RoomGetStateEventError):
-                msg = response.message
-                self.signals.messageSignal.emit(f"Error fetching room power levels: {msg}", "error")
-                return {"status": "error", "message": msg}
+                self.signals.messageSignal.emit(
+                    f"Primary call failed with error: {response.message}. Attempting full state fetch for power levels...",
+                    "debug"
+                )
             
-            else:
-                self.signals.messageSignal.emit("Unexpected response format while fetching power levels.", "error")
-                return {"status": "error", "message": "Unexpected response format"}
+            # If the primary call did not yield the power levels event, try a full state fetch.
+            if content is None:
+                full_state = await self.client.room_get_state(room_id)
+                event_types = []
+                if hasattr(full_state, "events"):
+                    for event in full_state.events:
+                        if isinstance(event, dict):
+                            etype = event.get("type")
+                        else:
+                            etype = getattr(event, "type", None)
+                        event_types.append(etype)
+                        if etype == "m.room.power_levels":
+                            if isinstance(event, dict):
+                                content = event.get("content")
+                            else:
+                                content = getattr(event, "content", {})
+                            break
+                self.signals.messageSignal.emit(
+                    f"Full state fetch returned {len(full_state.events)} events. Event types: {event_types}",
+                    "debug"
+                )
+            
+            # If still not found, wait a moment and try once more.
+            if content is None:
+                self.signals.messageSignal.emit("m.room.power_levels not found; retrying full state fetch...", "debug")
+                await asyncio.sleep(1)
+                full_state_retry = await self.client.room_get_state(room_id)
+                event_types_retry = []
+                if hasattr(full_state_retry, "events"):
+                    for event in full_state_retry.events:
+                        if isinstance(event, dict):
+                            etype = event.get("type")
+                        else:
+                            etype = getattr(event, "type", None)
+                        event_types_retry.append(etype)
+                        if etype == "m.room.power_levels":
+                            if isinstance(event, dict):
+                                content = event.get("content")
+                            else:
+                                content = getattr(event, "content", {})
+                            break
+                self.signals.messageSignal.emit(
+                    f"Retry full state fetch returned {len(full_state_retry.events)} events. Event types: {event_types_retry}",
+                    "debug"
+                )
+            
+            # If no power levels event is found, return an error.
+            if content is None:
+                error_msg = "Could not fetch m.room.power_levels from the server after retries."
+                self.signals.messageSignal.emit(error_msg, "error")
+                return {"status": "error", "message": error_msg}
+            
+            # Debug: Emit the raw power levels JSON.
+            self.signals.messageSignal.emit(f"Raw power levels: {json.dumps(content)}", "debug")
+            
+            # Map raw keys to friendlier labels.
+            friendly_mapping = {
+                "users": "Individual user power level overrides",
+                "users_default": "Default user power level",
+                "events": "Event-specific minimum power levels",
+                "events_default": "Default event power level",
+                "state_default": "Default state event power level",
+                "ban": "Ban: required power level to ban a user",
+                "kick": "Kick: required power level to kick a user",
+                "redact": "Redact: required power level to redact events",
+                "invite": "Invite: required power level to invite users",
+                "historical": "Historical: power level for historical events",
+                "m.call.invite": "Call invite: required power level for initiating calls",
+            }
+            
+            friendly = {}
+            for key, value in content.items():
+                if key in friendly_mapping:
+                    friendly[friendly_mapping[key]] = value
+                else:
+                    friendly[key] = value
+            
+            # Extract the current user's power level.
+            user_power = content.get("users", {}).get(self.client.user_id, content.get("users_default", 0))
+            
+            return {"status": "success", "power": user_power, "content": friendly}
         
         except Exception as e:
             self.signals.messageSignal.emit(f"Error fetching room power levels: {e}", "error")
-            return {"status": "error", "message": str(e)}    
+            return {"status": "error", "message": str(e)}
         
     async def update_room_power_levels(self, room_id: str, new_power: int) -> dict:
 

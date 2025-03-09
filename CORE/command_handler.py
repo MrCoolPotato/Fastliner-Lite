@@ -209,7 +209,6 @@ class CommandHandler(QObject):
                     asyncio.create_task(self._handle_pin_event(args[0]))
 
         elif cmd_lower == "/roomsettings":
-            self.signals.messageSignal.emit("This command is WIP and may not function as intended.", "debug")
             if len(args) < 1:
                 self.signals.messageSignal.emit("Usage: /roomsettings <room_id>", "warning")
             else:
