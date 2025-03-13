@@ -25,7 +25,7 @@ class RoomSettingsWindow(QDialog):
         self.setStyleSheet("""
             color: #282828;
             background-color: rgba(255, 255, 255, 1.0);
-            border-radius: 1px;
+            border-radius: 5px;
             border: 1px solid white;
             padding: 5px;
         """)

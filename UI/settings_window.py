@@ -18,7 +18,7 @@ class SettingsWindow(QDialog):
             color: #282828;
             background-color: rgba(255, 255, 255, 1.0);
             border-radius: 5px;
-            border: 1px solid white;
+            border: 5px solid white;
             padding: 5px;
         """)
 

@@ -58,7 +58,7 @@ class CommandHandler(QObject):
                 "  /invite <room_id> <user_id>\n"
                 "  /myinvites [accept/reject] [<room_id>]\n"
                 "  -\n"
-                "  /pin [--list|--unpin] <event_id>\n"
+                "  ...\n"
             ), "system")
 
         elif cmd_lower == "/settings":
@@ -185,29 +185,6 @@ class CommandHandler(QObject):
         elif cmd_lower == "/logout":
             asyncio.create_task(self._handle_logout())      
 
-        elif cmd_lower == "/pin":
-
-            self.signals.messageSignal.emit("This command is WIP and may not function as intended.", "debug")
-            current_room = self.matrix_client.current_room_id
-            if not current_room:
-                self.signals.messageSignal.emit("No room open for pin operations.", "warning")
-                return
-
-            if not args:
-                self.signals.messageSignal.emit("Usage: /pin --list | --unpin <event_id> | <event_id>", "warning")
-            else:
-                action = args[0].lower()
-                if action == "--list":
-                    asyncio.create_task(self._handle_list_pinned())
-                elif action == "--unpin":
-                    if len(args) < 2:
-                        self.signals.messageSignal.emit("Usage: /pin --unpin <event_id>", "warning")
-                    else:
-                        asyncio.create_task(self._handle_unpin_event(args[1]))
-                else:
-                    
-                    asyncio.create_task(self._handle_pin_event(args[0]))
-
         elif cmd_lower == "/roomsettings":
             if len(args) < 1:
                 self.signals.messageSignal.emit("Usage: /roomsettings <room_id>", "warning")
@@ -220,40 +197,6 @@ class CommandHandler(QObject):
 
         else:
             self.signals.messageSignal.emit(f"Unknown command: {command}", "error")
-
-    async def _handle_list_pinned(self):
-        current_room = self.matrix_client.current_room_id
-        if not current_room:
-            self.signals.messageSignal.emit("No room open to list pinned events.", "warning")
-            return
-        pinned = await self.matrix_client.list_pinned_events(current_room)
-        if pinned:
-            for event_id in pinned:
-                self.signals.messageSignal.emit(f"Pinned event: {event_id}", "system")
-        else:
-            self.signals.messageSignal.emit("No pinned events.", "system")
-
-    async def _handle_pin_event(self, event_id: str):
-        current_room = self.matrix_client.current_room_id
-        if not current_room:
-            self.signals.messageSignal.emit("No room open to pin an event.", "warning")
-            return
-        result = await self.matrix_client.pin_event(current_room, event_id)
-        if result:
-            self.signals.messageSignal.emit(f"Event {event_id} pinned in room {current_room}.", "success")
-        else:
-            self.signals.messageSignal.emit(f"Failed to pin event {event_id}.", "error")
-
-    async def _handle_unpin_event(self, event_id: str):
-        current_room = self.matrix_client.current_room_id
-        if not current_room:
-            self.signals.messageSignal.emit("No room open to unpin an event.", "warning")
-            return
-        result = await self.matrix_client.unpin_event(current_room, event_id)
-        if result:
-            self.signals.messageSignal.emit(f"Event {event_id} unpinned in room {current_room}.", "success")
-        else:
-            self.signals.messageSignal.emit(f"Failed to unpin event {event_id}.", "error")  
 
     async def _handle_create_room(self, name: str, visibility: str, room_type: str):
         room_id = await self.matrix_client.create_room(name, visibility, room_type)
