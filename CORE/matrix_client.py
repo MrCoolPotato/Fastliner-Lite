@@ -4,10 +4,7 @@ from nio import (
     LogoutResponse,
     SyncResponse,
     SyncError,
-    ErrorResponse,
     RoomPutStateResponse,
-    RoomGetStateEventResponse,
-    RoomGetStateEventError,
 )
 import nio
 from nio.api import RoomPreset, RoomVisibility
@@ -55,12 +52,15 @@ class MatrixClient:
                 self.signals.messageSignal.emit(
                     f"Login failed: {response.message if hasattr(response, 'message') else 'Unknown error'}", "error"
                 )
+                await self.client.close()
                 return False
         except asyncio.TimeoutError:
             self.signals.messageSignal.emit("Login process timed out.", "error")
+            await self.client.close()
             return False
         except Exception as e:
             self.signals.messageSignal.emit(f"Login error: {str(e)}", "error")
+            await self.client.close()
             return False
         
     async def logout(self):
@@ -722,12 +722,41 @@ class MatrixClient:
             error_msg = f"Error updating room power levels: {e}"
             self.signals.messageSignal.emit(error_msg, "error")
             return
+        
+    async def register_new_user(self, username: str, password: str) -> dict:
+        try:
+            new_client = AsyncClient(self.homeserver)
+            
+            register_resp = await asyncio.wait_for(
+                new_client.register(username=username, password=password), 
+                timeout=10
+            )
+            
+            return {
+                "status": "success",
+                "message": "User created successfully"
+            }
+
+        except asyncio.TimeoutError:
+            error_msg = "The registration process timed out."
+            self.signals.messageSignal.emit(error_msg, "error")
+            await new_client.close()
+            return {
+                "status": "error",
+                "message": error_msg
+            }
+
+        except Exception as e:
+            self.signals.messageSignal.emit(f"Error registering new user: {e}", "error")
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
     async def current_room_id(self):
         
         return OpenRoomManager.get_current_room()        
     
     async def stop(self):
-        
         await self.stop_syncing()
         await self.client.close()

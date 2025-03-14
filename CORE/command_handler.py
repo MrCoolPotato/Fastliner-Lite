@@ -1,5 +1,3 @@
-# CORE/command_handler.py
-
 from PySide6.QtCore import QObject
 
 from UTILS.signals import SignalManager
@@ -58,7 +56,7 @@ class CommandHandler(QObject):
                 "  /invite <room_id> <user_id>\n"
                 "  /myinvites [accept/reject] [<room_id>]\n"
                 "  -\n"
-                "  ...\n"
+                "  /register <username> <password>\n"
             ), "system")
 
         elif cmd_lower == "/settings":
@@ -195,10 +193,35 @@ class CommandHandler(QObject):
                 self.room_settings_window = RoomSettingsWindow(room_id, self.matrix_client)
                 self.room_settings_window.show()            
 
+        elif cmd_lower == "/register":
+            if len(args) != 2:
+                self.signals.messageSignal.emit("Usage: /register <username> <password>", "warning")
+            else:
+                username, password = args
+                self.signals.messageSignal.emit(f"Registering new user '{username}'...", "system")
+                asyncio.create_task(self._handle_register(username, password))
+
         else:
             self.signals.messageSignal.emit(f"Unknown command: {command}", "error")
 
+    async def _handle_register(self, username: str, password: str):
+
+        if self.logged_in:
+            self.signals.messageSignal.emit("You are logged in!.", "warning")
+            return
+        
+        result = await self.matrix_client.register_new_user(username, password)
+        if result.get("status") == "success":
+            self.signals.messageSignal.emit(f"User '{username}' registered successfully.", "success")
+        else:
+            err = result.get("message", "Registration failed.")
+            self.signals.messageSignal.emit(f"Registration failed for '{username}': {err}", "error")
+
     async def _handle_create_room(self, name: str, visibility: str, room_type: str):
+        if not self.logged_in:
+            self.signals.messageSignal.emit("You are not logged in.", "warning")
+            return
+
         room_id = await self.matrix_client.create_room(name, visibility, room_type)
         if room_id:
             self.signals.messageSignal.emit(f"{room_type.capitalize()} created successfully: {room_id}", "success")
@@ -206,14 +229,23 @@ class CommandHandler(QObject):
             self.signals.messageSignal.emit(f"{room_type.capitalize()} creation failed.", "error")         
 
     async def _handle_whoami(self):
+        if not self.logged_in:
+            self.signals.messageSignal.emit("You are not logged in.", "warning")
+            return
 
         await self.matrix_client.whoami() 
 
     async def _handle_myevents(self):
+        if not self.logged_in:
+            self.signals.messageSignal.emit("You are not logged in.", "warning")
+            return
         
         await self.matrix_client.list_my_events()  
 
     async def _handle_myrooms(self):
+        if not self.logged_in:
+            self.signals.messageSignal.emit("You are not logged in.", "warning")
+            return
         
         await self.matrix_client.list_my_rooms()              
 
@@ -284,6 +316,10 @@ class CommandHandler(QObject):
             self.signals.messageSignal.emit("No main window reference. Cannot clear local screen.", "error") 
 
     async def _handle_list_invites(self):
+        if not self.logged_in:
+            self.signals.messageSignal.emit("You are not logged in.", "warning")
+            return
+
         invites = self.matrix_client.pending_invites
         if invites:
             for room_id, data in invites.items():
@@ -296,6 +332,10 @@ class CommandHandler(QObject):
             self.signals.messageSignal.emit("No pending invites found.", "system")
 
     async def _handle_accept_invite(self, room_id: str):
+        if not self.logged_in:
+            self.signals.messageSignal.emit("You are not logged in.", "warning")
+            return
+
         result = await self.matrix_client.accept_invite(room_id)
         if result:
             self.signals.messageSignal.emit(f"Invite accepted for room {room_id}.", "success")
@@ -303,6 +343,10 @@ class CommandHandler(QObject):
             self.signals.messageSignal.emit(f"Failed to accept invite for room {room_id}.", "error")
 
     async def _handle_reject_invite(self, room_id: str):
+        if not self.logged_in:
+            self.signals.messageSignal.emit("You are not logged in.", "warning")
+            return
+
         result = await self.matrix_client.reject_invite(room_id)
         if result:
             self.signals.messageSignal.emit(f"Invite rejected for room {room_id}.", "success")
@@ -310,6 +354,9 @@ class CommandHandler(QObject):
             self.signals.messageSignal.emit(f"Failed to reject invite for room {room_id}.", "error")     
 
     async def _handle_invite(self, room_id: str, user_id: str):
+        if not self.logged_in:
+            self.signals.messageSignal.emit("You are not logged in.", "warning")
+            return
         
         result = await self.matrix_client.invite_user(room_id, user_id)
         if result:
@@ -326,6 +373,8 @@ class CommandHandler(QObject):
         self.signals.blankSignal.emit()
 
     async def _handle_leave_room(self, room_ids: str):
-        
+        if not self.logged_in:
+            self.signals.messageSignal.emit("You are not logged in.", "warning")
+            return
+
         await self.matrix_client.leave_room(room_ids)
-     
