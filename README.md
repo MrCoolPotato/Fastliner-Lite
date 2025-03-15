@@ -14,7 +14,7 @@ The application is designed to be simple and efficient.
 
 ---
 
-## Installation (Advanced)
+## Installation (Running from source)
 
 Clone the repository and install dependencies:
 
@@ -28,7 +28,7 @@ pip install -r requirements.txt
 
 ---
 
-## Running the Application (Advanced)
+## Running the Application (Running from source)
 
 Run the application from source:
 
