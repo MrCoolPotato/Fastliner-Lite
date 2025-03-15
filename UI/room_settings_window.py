@@ -12,6 +12,8 @@ from UTILS.signals import SignalManager
 import asyncio
 import json
 
+from UTILS.config_manager import ConfigManager
+
 class RoomSettingsWindow(QDialog):
     def __init__(self, room_id: str, matrix_client, parent=None):
         super().__init__(parent)
@@ -20,22 +22,39 @@ class RoomSettingsWindow(QDialog):
         self.signals = SignalManager()
         self.original_power_levels = {}
 
+        
+        ui_scale = ConfigManager.get("ui_scale", 1.0)
+       
+        base_width = ConfigManager.get("room_settings_width", 700)
+        base_height = ConfigManager.get("room_settings_height", 500)
+        base_radius = 5
+        scaled_radius = int(base_radius * ui_scale)
+
+        # Colors
+        colors_config = ConfigManager.get("colors", {})
+        rs_bg_color = colors_config.get("room_settings_background_color", "255, 255, 255, 1.0")
+        rs_border_color = colors_config.get("room_settings_border_color", "white")
+        rs_text_color = colors_config.get("room_settings_text_color", "#282828")
+
         self.setWindowTitle("Room Settings")
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Popup)
-        self.setStyleSheet("""
-            color: #282828;
-            background-color: rgba(255, 255, 255, 1.0);
-            border-radius: 5px;
-            border: 1px solid white;
+        self.resize(base_width, base_height)
+
+        self.setStyleSheet(f"""
+            color: {rs_text_color};
+            background-color: rgba({rs_bg_color});
+            border-radius: {scaled_radius}px;
+            border: 1px solid {rs_border_color};
             padding: 5px;
         """)
-        self.resize(700, 500)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
         layout.addWidget(QLabel("Room Power Levels (raw JSON):"))
 
         self.text_edit = QPlainTextEdit()
+        self.text_edit.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.text_edit.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.text_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addWidget(self.text_edit, stretch=1)
 

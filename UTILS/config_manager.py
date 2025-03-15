@@ -3,10 +3,14 @@ import json
 import os
 
 DEFAULT_CONFIG = {
-    "font": "Helvetica",
+    "font": "SF Mono",
     "ui_scale": 1.0,
     "font_scale": 14,
     "input_placeholder": "~",
+    "settings_width": 600,
+    "settings_height": 500,
+    "room_settings_width": 700,
+    "room_settings_height": 500,
     "colors": {
         "text_general": "#282828", 
         "text_system": "#458588",
@@ -32,7 +36,13 @@ DEFAULT_CONFIG = {
         "tree_category_icon_color_open": "255, 255, 255, 0.5",
         "tree_item_hover_color": "255, 255, 255, 0.5",
         "tree_item_indentation_color": "255, 255, 255, 1.0",
-        "tree_category_indentation_color": "255, 255, 255, 1.0"
+        "tree_category_indentation_color": "255, 255, 255, 1.0",
+        "settings_color": "255, 255, 255, 1.0",
+        "settings_border_color": "white",
+        "settings_text_color": "#282828",
+        "room_settings_background_color": "255, 255, 255, 1.0",
+        "room_settings_border_color": "white",
+        "room_settings_text_color": "#282828"
     }
 }
 
@@ -91,3 +101,9 @@ class ConfigManager:
         data = cls.load_config()
         data[key] = value
         cls.save_config()
+
+    @classmethod
+    def restore_defaults(cls):
+        """Resets the config data to DEFAULT_CONFIG and saves."""
+        cls._config_data = DEFAULT_CONFIG.copy()
+        cls.save_config()    

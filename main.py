@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     try:
         config = ConfigManager.load_config()
-        font_name = ConfigManager.get("font", "Helvetica")
+        font_name = ConfigManager.get("font", "SF Mono")
         ui_scale = ConfigManager.get("ui_scale", 1.0)
         font_scale = ConfigManager.get("font_scale", 14)
         base_font_size = int(font_scale * ui_scale)
