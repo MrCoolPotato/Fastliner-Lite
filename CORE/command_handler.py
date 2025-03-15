@@ -52,6 +52,8 @@ class CommandHandler(QObject):
                 "  /create_room <name> [--public|--private] [--space]\n"
                 "  /roomsettings <room_id>\n"
                 "  /leaveroom <id>\n"
+                "  /add <child_id> <parent_id>\n"
+                "  /remove <child_id> <parent_id>\n"
                 "  -\n"
                 "  /invite <room_id> <user_id>\n"
                 "  /myinvites [accept/reject] [<room_id>]\n"
@@ -200,6 +202,24 @@ class CommandHandler(QObject):
                 username, password = args
                 self.signals.messageSignal.emit(f"Registering new user '{username}'...", "system")
                 asyncio.create_task(self._handle_register(username, password))
+
+        elif cmd_lower == "/add":
+            if len(args) != 2:
+                self.signals.messageSignal.emit("Usage: /add <child_id> <parent_id>", "warning")
+            else:
+                child_id = args[0]
+                parent_id = args[1]
+                self.signals.messageSignal.emit(f"Adding child '{child_id}' to parent '{parent_id}'...", "system")
+                asyncio.create_task(self._handle_add(child_id, parent_id)) 
+
+        elif cmd_lower == "/remove":
+            if len(args) != 2:
+                self.signals.messageSignal.emit("Usage: /remove <child_id> <parent_id>", "warning")
+            else:
+                child_id = args[0]
+                parent_id = args[1]
+                self.signals.messageSignal.emit(f"Removing child '{child_id}' from parent '{parent_id}'...", "system")
+                asyncio.create_task(self._handle_remove(child_id, parent_id))               
 
         else:
             self.signals.messageSignal.emit(f"Unknown command: {command}", "error")
@@ -378,3 +398,37 @@ class CommandHandler(QObject):
             return
 
         await self.matrix_client.leave_room(room_ids)
+
+    async def _handle_add(self, child_id: str, parent_id: str):
+        if not self.logged_in:
+            self.signals.messageSignal.emit("You are not logged in.", "warning")
+            return
+
+        result = await self.matrix_client.add_child_to_space(child_id, parent_id)
+        if result:
+            self.signals.messageSignal.emit(
+                f"Child '{child_id}' successfully added to space '{parent_id}'.",
+                "success"
+            )
+        else:
+            self.signals.messageSignal.emit(
+                f"Failed to add {child_id} to space {parent_id}.", 
+                "error"
+            )
+
+    async def _handle_remove(self, child_id: str, parent_id: str):
+        if not self.logged_in:
+            self.signals.messageSignal.emit("You are not logged in.", "warning")
+            return
+        
+        result = await self.matrix_client.remove_child_from_space(child_id, parent_id)
+        if result:
+            self.signals.messageSignal.emit(
+                f"Child '{child_id}' successfully removed from space '{parent_id}'.",
+                "success"
+            )
+        else:
+            self.signals.messageSignal.emit(
+                f"Failed to remove '{child_id}' from space '{parent_id}'.",
+                "error"
+            )        

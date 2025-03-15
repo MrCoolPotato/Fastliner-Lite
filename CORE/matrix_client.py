@@ -752,6 +752,111 @@ class MatrixClient:
                 "status": "error",
                 "message": str(e)
             }
+        
+    async def add_child_to_space(self, child_id: str, parent_id: str) -> bool:
+
+        domain = "unknown"
+        if ":" in child_id:
+            domain = child_id.split(":", 1)[1]
+
+        content = {
+            "via": [domain],
+            "auto_join": True
+        }
+
+        try:
+            response = await self.client.room_put_state(
+                parent_id,
+                event_type="m.space.child",
+                state_key=child_id,
+                content=content
+            )
+
+            if hasattr(response, "event_id") and response.event_id:
+                self.signals.messageSignal.emit(
+                    f"Added child '{child_id}' to space '{parent_id}' successfully.",
+                    "success"
+                )
+                asyncio.create_task(self.fetch_rooms_and_spaces())
+                return True
+
+            if (isinstance(response, nio.RoomPutStateResponse) 
+                or (hasattr(response, "transport_response") 
+                    and response.transport_response is not None 
+                    and response.transport_response.status == 200)):
+                self.signals.messageSignal.emit(
+                    f"Added child '{child_id}' to space '{parent_id}' successfully.",
+                    "success"
+                )
+                asyncio.create_task(self.fetch_rooms_and_spaces())
+                return True
+
+            error_msg = getattr(response, "message", "Unknown error")
+            self.signals.messageSignal.emit(
+                f"Failed to add child '{child_id}' to space '{parent_id}': {error_msg}",
+                "error"
+            )
+            asyncio.create_task(self.fetch_rooms_and_spaces())
+            return False
+
+        except Exception as e:
+            self.signals.messageSignal.emit(
+                f"Error adding child '{child_id}' to space '{parent_id}': {str(e)}",
+                "error"
+            )
+            asyncio.create_task(self.fetch_rooms_and_spaces())
+            return False
+        
+    async def remove_child_from_space(self, child_id: str, parent_id: str) -> bool:
+        
+        try:
+       
+            response = await self.client.room_put_state(
+                parent_id,
+                event_type="m.space.child",
+                state_key=child_id,
+                content={}
+            )
+
+            if hasattr(response, "event_id") and response.event_id:
+                self.signals.messageSignal.emit(
+                    f"Removed child '{child_id}' from space '{parent_id}' successfully.",
+                    "success"
+                )
+                asyncio.create_task(self.fetch_rooms_and_spaces())
+                return True
+
+            if (
+                isinstance(response, nio.RoomPutStateResponse) or
+                (
+                    hasattr(response, "transport_response") and
+                    response.transport_response is not None and
+                    response.transport_response.status == 200
+                )
+            ):
+                self.signals.messageSignal.emit(
+                    f"Removed child '{child_id}' from space '{parent_id}' successfully.",
+                    "success"
+                )
+                asyncio.create_task(self.fetch_rooms_and_spaces())
+                return True
+
+     
+            error_msg = getattr(response, "message", "Unknown error")
+            self.signals.messageSignal.emit(
+                f"Failed to remove child '{child_id}' from space '{parent_id}': {error_msg}",
+                "error"
+            )
+            asyncio.create_task(self.fetch_rooms_and_spaces())
+            return False
+
+        except Exception as e:
+            self.signals.messageSignal.emit(
+                f"Error removing child '{child_id}' from space '{parent_id}': {str(e)}",
+                "error"
+            )
+            asyncio.create_task(self.fetch_rooms_and_spaces())
+            return False    
 
     async def current_room_id(self):
         

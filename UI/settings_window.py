@@ -24,8 +24,8 @@ class SettingsWindow(QDialog):
        
         ui_scale = ConfigManager.get("ui_scale", 1.0)
     
-        settings_width = ConfigManager.get("settings_width", 600)
-        settings_height = ConfigManager.get("settings_height", 500)
+        settings_width = ConfigManager.get("settings_width", 700)
+        settings_height = ConfigManager.get("settings_height", 600)
 
         base_radius = 5
         scaled_radius = int(base_radius * ui_scale)
@@ -85,7 +85,7 @@ class SettingsWindow(QDialog):
 
         ConfigManager._config_data = new_dict
         ConfigManager.save_config()          
-        self.signals.messageSignal.emit("Config saved.", "system")
+        self.signals.messageSignal.emit("Config saved. Some changes may require a restart.", "system")
         self.original_content = new_content
         self.close()
 
