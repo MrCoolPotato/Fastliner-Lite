@@ -239,7 +239,6 @@ class MatrixClient:
                 joined_rooms = response.rooms
                 room_details = []
 
-            
                 for room_id in joined_rooms:
                     
                     room_info = {"room_id": room_id, "is_space": False, "name": room_id}
@@ -261,17 +260,15 @@ class MatrixClient:
                                     room_info["name"] = room_name
 
                             elif event_type == "m.space.child":
-    
                                 child_room_id = event.get("state_key")
-                                if child_room_id:
+                                content = event.get("content", {})
                             
+                                if child_room_id and content:
                                     room_info.setdefault("children", []).append(child_room_id)
 
                     room_details.append(room_info)
 
-            
                 room_mapping = {room["room_id"]: room for room in room_details}
-
                 
                 for room in room_details:
                     if room.get("is_space") and "children" in room:
@@ -554,6 +551,7 @@ class MatrixClient:
                 room_id = response.room_id
                 msg = f"Created {'space' if is_space else 'room'} '{name}' successfully: {room_id}"
                 self.signals.messageSignal.emit(msg, "success")
+                asyncio.create_task(self.fetch_rooms_and_spaces())
                 return room_id
             else:
                 error_msg = getattr(response, "message", "Unknown error")
@@ -761,7 +759,7 @@ class MatrixClient:
 
         content = {
             "via": [domain],
-            "auto_join": True
+            "auto_join": False
         }
 
         try:
