@@ -56,7 +56,6 @@ Fastliner-Lite/
 ├── STORE/
 │    └── config.json #File for reading and writing app settings.
 ├── UI/
-│    ├── bot_game.py #Dormant file for later use.
 │    ├── main_window.py #Main GUI window of the application.
 │    ├── room_settings_window.py #Interface for displaying and interacting with room/space settings.
 │    └── settings_window.py #Interface for displaying and interacting with application settings.
