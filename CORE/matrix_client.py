@@ -292,7 +292,7 @@ class MatrixClient:
                 self.signals.messageSignal.emit("Failed to retrieve room list.", "error")
 
         except Exception as e:
-            self.signals.messageSignal.emit(f"Error fetching rooms: {str(e)}", "error")
+            self.signals.messageSignal.emit(f"Error fetching rooms: {str(e)}", "error")       
 
     async def fetch_room_messages(self, room_id, limit=1000):
         
