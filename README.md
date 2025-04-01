@@ -11,6 +11,7 @@ The application is designed to be simple and efficient.
 - **Matrix Compatible:** Fully supports standard Matrix features including messaging, room and space management and user invites.
 - **Terminal-like Command Interface:** Simplified interaction through intuitive `/commands`.
 - **Lightweight UI:** Minimal graphical interface implemented with PySide6.
+- **Web Browser:** Built in web browser for general use or quick video conferencing via Jitsi or Element Call.
 
 ---
 
