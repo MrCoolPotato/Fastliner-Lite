@@ -63,7 +63,6 @@ Fastliner-Lite/
 ├── UTILS/
 │    ├── color_manager.py #File which handles the coloring of different message signals.
 │    ├── config_manager.py #The file for handling and managing config.json.
-│    ├── jwt.py #Dormant file for later use.
 │    ├── open_room_manager.py #File that keeps the track of opened rooms.
 │    └── signals.py #General manager for signals, handles cross block communications.
 ├── .gitignore #gitignore file.
