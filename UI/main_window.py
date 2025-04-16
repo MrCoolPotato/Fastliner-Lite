@@ -110,11 +110,9 @@ class MainWindow(QMainWindow):
             }}
             QTreeView::branch:closed:has-children {{
                 background-color: rgba({tree_category_icon_color_closed});
-                image: url("assets/fl_small_logo.png");
             }}
-            QTreeView::branch:open:has-children {{
+            QTreeView::branch:open:has-children{{
                 background-color: rgba({tree_category_icon_color_open});
-                image: url(assets/fl_small_logo.png);
             }}
             QTreeWidget::item:hover {{
                 background-color: rgba({tree_item_hover_color});

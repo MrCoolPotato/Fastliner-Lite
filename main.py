@@ -4,7 +4,7 @@ import sys
 import asyncio
 from PySide6.QtWidgets import QApplication
 from qasync import QEventLoop
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QIcon
 
 from UI.main_window import MainWindow
 from UTILS.signals import SignalManager
@@ -15,6 +15,7 @@ from CORE.matrix_client import MatrixClient
 if __name__ == "__main__":
 
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon("ASSETS/fastliner_raw_logo.png")) 
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
