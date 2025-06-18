@@ -15,7 +15,7 @@ from CORE.matrix_client import MatrixClient
 if __name__ == "__main__":
 
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon("ASSETS/fastliner_raw_logo.png")) 
+    app.setWindowIcon(QIcon("ASSETS/fastliner_icon_new_raw.png")) 
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
