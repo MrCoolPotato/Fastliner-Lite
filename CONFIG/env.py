@@ -1,2 +1,0 @@
-
-HOMESERVER = "http://matrix.fastliner.club:8008"

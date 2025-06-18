@@ -9,8 +9,6 @@ from nio import (
 import nio
 from nio.api import RoomPreset, RoomVisibility
 
-#from CONFIG.env import HOMESERVER
-
 from UTILS.open_room_manager import OpenRoomManager
 
 from UTILS.config_manager import ConfigManager
