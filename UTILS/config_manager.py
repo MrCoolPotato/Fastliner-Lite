@@ -1,6 +1,7 @@
 # UTILS/config_manager.py
 import json
 import os
+import sys
 
 DEFAULT_CONFIG = {
     "homeserver": "http://matrix.fastliner.club:8008",
@@ -47,12 +48,14 @@ DEFAULT_CONFIG = {
     }
 }
 
-CONFIG_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),  
-    "..",                                      
-    "STORE",                                    
-    "config.json"
-)
+def _resources_dir():
+    if getattr(sys, "frozen", False):
+        macos_dir = os.path.dirname(sys.executable)
+        return os.path.normpath(os.path.join(macos_dir, os.pardir, "Resources"))
+    else:
+        return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+CONFIG_PATH = os.path.join(_resources_dir(), "STORE", "config.json")
 
 class ConfigManager:
     _config_data = None
