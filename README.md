@@ -1,3 +1,5 @@
+![app_logo](ASSETS/fastliner_icon_new_raw.png)
+
 # Fastliner-Lite
 
 **Fastliner-Lite** is a lightweight, command-based, terminal-style Matrix client built with Python. 
@@ -45,15 +47,9 @@ python main.py
 Fastliner-Lite/
 ├── ASSETS/
 │    └── #Assets like logos etc go here.
-├── CACHE/
-│    └── #Cache used by the app for downloads like media.
-├── CONFIG/
-│    └── env.py #File for holding the homeserver and other adresses.
 ├── CORE/
 │    ├── command_handler.py #All commands get processed and executed here.
 │    └── matrix_client.py #Matrix logic group used for communicating with the homeserver(s).
-├── LOGS/
-│    └── #App logs that store the crash logs, errors and critical health data.
 ├── STORE/
 │    └── config.json #File for reading and writing app settings.
 ├── UI/
