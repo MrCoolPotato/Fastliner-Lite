@@ -62,10 +62,11 @@ class CommandHandler(QObject):
             ), "system")
 
         elif cmd_lower == "/settings":
-            if not self.logged_in:
-                self.signals.messageSignal.emit("You are not logged in.", "warning")
-            else:
-                self._handle_settings()
+            ##if not self.logged_in:
+            ##    self.signals.messageSignal.emit("You are not logged in.", "warning")
+            ##else:
+            ##    self._handle_settings()
+            self._handle_settings()
 
         elif cmd_lower == "/exit":
             self._handle_exit()
@@ -219,7 +220,7 @@ class CommandHandler(QObject):
                 child_id = args[0]
                 parent_id = args[1]
                 self.signals.messageSignal.emit(f"Removing child '{child_id}' from parent '{parent_id}'...", "system")
-                asyncio.create_task(self._handle_remove(child_id, parent_id))               
+                asyncio.create_task(self._handle_remove(child_id, parent_id))        
 
         else:
             self.signals.messageSignal.emit(f"Unknown command: {command}", "error")

@@ -9,9 +9,11 @@ from nio import (
 import nio
 from nio.api import RoomPreset, RoomVisibility
 
-from CONFIG.env import HOMESERVER
+#from CONFIG.env import HOMESERVER
 
 from UTILS.open_room_manager import OpenRoomManager
+
+from UTILS.config_manager import ConfigManager
 
 import asyncio
 import aiohttp
@@ -22,7 +24,7 @@ import json
 
 class MatrixClient:
     def __init__(self, signals):
-        self.homeserver = HOMESERVER
+        self.homeserver = ConfigManager().get("homeserver")
         self.client = None
         self.signals = signals
 
@@ -35,6 +37,7 @@ class MatrixClient:
     async def login(self, username, password):
       
         self.client = AsyncClient(self.homeserver, username)
+        self.signals.messageSignal.emit(f"Homeserver: {self.homeserver}", "system")
         try:
             response = await asyncio.wait_for(self.client.login(password), timeout=5)
             self.signals.messageSignal.emit(f"Raw response: {response}", "server")

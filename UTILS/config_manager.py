@@ -3,6 +3,7 @@ import json
 import os
 
 DEFAULT_CONFIG = {
+    "homeserver": "http://matrix.fastliner.club:8008",
     "font": "SF Mono",
     "ui_scale": 1.0,
     "font_scale": 14,
